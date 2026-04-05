@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>קוד לואיג'י</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.9/babel.min.js"></script>
+
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; padding: 0; overflow: hidden; 
+            height: 100vh; height: 100dvh;
+            background-color: #81B9E6;
+        }
+        #root { height: 100%; }
+        .draggable-number { cursor: grab; user-select: none; touch-action: none; -webkit-user-select: none; }
+        .draggable-number:active { cursor: grabbing; }
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
+        }
+        .shake-animation { animation: shake 0.4s ease-in-out; }
+
+        @keyframes success-pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+            100% { transform: scale(1); }
+        }
+        .success-animation { animation: success-pop 0.4s ease-out; }
+
+        .equation-text { font-size: clamp(1rem, 3.5vh, 1.8rem); }
+
+        .drag-ghost {
+            position: fixed; pointer-events: none; z-index: 9999;
+            opacity: 0.85; transform: translate(-50%, -50%) scale(1.3);
+            font-size: 1.5rem; font-weight: 900; color: #1F4E79;
+            background: #FBD000; border: 3px solid #1F4E79; border-radius: 12px;
+            width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        }
+        .drop-target-active { box-shadow: 0 0 0 3px #43B047, 0 0 12px rgba(67,176,71,0.5) !important; }
+
+        @keyframes confetti-fall {
+            0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+        }
+        .confetti-piece {
+            position: fixed; top: 0; z-index: 10000; pointer-events: none;
+            width: 10px; height: 10px; border-radius: 2px;
+            animation: confetti-fall linear forwards;
+        }
+        .foul-used { opacity: 0.2; filter: grayscale(100%); }
+        .modal-overlay {
+            position: fixed; inset: 0; z-index: 9000;
+            background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center;
+            backdrop-filter: blur(3px);
+        }
+        @keyframes modal-pop {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .modal-box { animation: modal-pop 0.4s ease-out forwards; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        // === פונקציית אנימציית מעוף פריטים ===
+        const animateItem = (type, startId, endId, isReverse, count, onArrive) => {
+            const startEl = document.getElementById(startId);
+            const endEl = document.getElementById(endId);
+            if (!startEl || !endEl) return;
+
+            const startRect = startEl.getBoundingClientRect();
+            const endRect = endEl.getBoundingClientRect();
+            const imgSrc = type === 'coin' 
+                ? './pics/coin.png' 
+                : './pics/star.png';
+
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => {
+                    const el = document.createElement('img');
+                    el.src = imgSrc;
+                    el.style.position = 'fixed';
+                    el.style.width = '32px';
+                    el.style.height = '32px';
+                    el.style.objectFit = 'contain';
+                    el.style.zIndex = '9999';
+                    el.style.transition = 'all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+                    el.style.pointerEvents = 'none';
+
+                    const x1 = startRect.left + startRect.width / 2 - 16;
+                    const y1 = startRect.top + startRect.height / 2 - 16;
+                    const x2 = endRect.left + endRect.width / 2 - 16;
+                    const y2 = endRect.top + endRect.height / 2 - 16;
+
+                    if (isReverse) {
+                        el.style.left = x2 + 'px';
+                        el.style.top = y2 + 'px';
+                    } else {
+                        el.style.left = x1 + 'px';
+                        el.style.top = y1 + 'px';
+                    }
+
+                    document.body.appendChild(el);
+                    void el.offsetWidth;
+
+                    if (isReverse) {
+                        el.style.left = x1 + 'px';
+                        el.style.top = y1 + 'px';
+                        el.style.opacity = '0';
+                        el.style.transform = 'scale(0.5)';
+                    } else {
+                        el.style.left = x2 + 'px';
+                        el.style.top = y2 + 'px';
+                        el.style.transform = 'scale(1.2)';
+                    }
+
+                    setTimeout(() => {
+                        el.remove();
+                        if (onArrive) onArrive();
+                    }, 500);
+                }, i * 150);
+            }
+        };
+
+        // === מחולל צלילים פנימי (Web Audio API) מודרני ===
+        const playSynthSound = (type) => {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                
+                if (!window.audioCtx) {
+                    window.audioCtx = new AudioContext();
+                }
+                const ctx = window.audioCtx;
+                if (ctx.state === 'suspended') {
+                    ctx.resume();
+                }
+                
+                const now = ctx.currentTime;
+
+                const createOsc = (type, freq, time, duration, vol=0.15, attack=0.02) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = type;
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    
+                    osc.frequency.setValueAtTime(freq, time);
+                    gain.gain.setValueAtTime(0, time);
+                    gain.gain.linearRampToValueAtTime(vol, time + attack);
+                    gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
+                    
+                    osc.start(time);
+                    osc.stop(time + duration);
+                    return {osc, gain};
+                };
+
+                switch (type) {
+                    case 'CORRECT':
+                        createOsc('sine', 1046.50, now, 0.4, 0.1, 0.01); 
+                        createOsc('sine', 1318.51, now + 0.1, 0.5, 0.15, 0.01); 
+                        break;
+                    case 'MISTAKE':
+                        createOsc('triangle', 200, now, 0.15, 0.2, 0.01);
+                        createOsc('triangle', 150, now + 0.1, 0.25, 0.2, 0.01);
+                        break;
+                    case 'FAIL':
+                        [349.23, 329.63, 293.66, 261.63].forEach((freq, i) => {
+                            createOsc('triangle', freq, now + i * 0.15, 0.3, 0.2, 0.05);
+                        });
+                        break;
+                    case 'ATTEMPT_UP':
+                        const s3 = createOsc('sine', 400, now, 0.4, 0.15, 0.1);
+                        s3.osc.frequency.exponentialRampToValueAtTime(600, now + 0.3);
+                        break;
+                    case 'WIN':
+                        [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+                            createOsc('sine', freq, now + i * 0.08, 0.8, 0.15, 0.02);
+                            createOsc('triangle', freq/2, now + i * 0.08, 0.8, 0.05, 0.02);
+                        });
+                        break;
+                    case 'PERFECT_WIN':
+                        [523.25, 659.25, 783.99, 1046.50, 1318.51, 1567.98].forEach((freq, i) => {
+                            createOsc('sine', freq, now + i * 0.08, 1.2, 0.15, 0.02);
+                            createOsc('triangle', freq/2, now + i * 0.08, 1.2, 0.05, 0.02);
+                        });
+                        break;
+                }
+            } catch(e) {
+                console.warn('Audio synthesis failed', e);
+            }
+        };
+
+        const BASE_IMG_PATH = './pics/'; 
+
+        const CHARACTERS = {
+          bullet: { id: 'bullet', filename: 'bullet.png', fallback: '🚀' },
+          greenmushroom: { id: 'greenmushroom', filename: 'greenmushroom.png', fallback: '🍄' },
+          questionmark: { id: 'questionmark', filename: 'questionmark.png', fallback: '❓' },
+          redshell: { id: 'redshell', filename: 'redshell.png', fallback: '🐢' },
+          flowerice: { id: 'flowerice', filename: 'flowerice.png', fallback: '❄️' },
+          cheepcheep: { id: 'cheepcheep', filename: 'cheepcheep.png', fallback: '🐟' },
+          blooper: { id: 'blooper', filename: 'blooper.png', fallback: '🦑' },
+          wario: { id: 'wario', filename: 'wario.png', fallback: 'W' },
+          bones: { id: 'bones', filename: 'bones.png', fallback: 'B' },
+          flower: { id: 'flower', filename: 'flower.png', fallback: '🌻' },
+          bomb: { id: 'bomb', filename: 'bomb.png', fallback: '💣' },
+          shyguy: { id: 'shyguy', filename: 'shyguy.png', fallback: 'S' },
+          yoshi: { id: 'yoshi', filename: 'yoshi.png', fallback: '🦖' },
+          boo: { id: 'boo', filename: 'boo.png', fallback: '👻' },
+          rosalina: { id: 'rosalina', filename: 'rosalina.png', fallback: '👸' },
+          daisy: { id: 'daisy', filename: 'daisy.png', fallback: '🌼' },
+          goomba: { id: 'goomba', filename: 'goomba.png', fallback: '🍄' },
+          bowser: { id: 'bowser', filename: 'bowser.png', fallback: '🐲' },
+          toad: { id: 'toad', filename: 'toad.png', fallback: '🍄' },
+          peach: { id: 'peach', filename: 'peach.png', fallback: '👸' },
+          luigy: { id: 'luigy', filename: 'luigy.png', fallback: 'L' },
+          mario: { id: 'mario', filename: 'mario.png', fallback: 'M' }
+        };
+        Object.keys(CHARACTERS).forEach(key => { CHARACTERS[key].imageUrl = BASE_IMG_PATH + CHARACTERS[key].filename; });
+        const CHAR_IDS = Object.keys(CHARACTERS);
+
+        const getUniqueRandoms = (count, min, max) => {
+          const nums = new Set();
+          while (nums.size < count) nums.add(Math.floor(Math.random() * (max - min + 1)) + min);
+          return Array.from(nums);
+        };
+        
+        const makeEq = (leftArr, leftVal, rightArr, rightVal) => {
+            let left = [...leftArr];
+            let right = [...rightArr];
+            if (leftVal > rightVal) {
+                right.push('+', leftVal - rightVal);
+            } else if (leftVal < rightVal) {
+                left.push('+', rightVal - leftVal);
+            }
+            return [...left, '=', ...right];
+        };
+
+        const getRnd = (arr) => arr[Math.floor(Math.random() * arr.length)];
+        
+        const generatePuzzle = (level) => {
+          let result;
+          do {
+          const numSymbols = (level === 1 || level === 3) ? 3 : (level === 6 ? 5 : 4);
+          const forcedChar = ['mario','luigy'][Math.floor(Math.random()*2)];
+          const others = CHAR_IDS.filter(c=>c!==forcedChar).sort(()=>0.5-Math.random()).slice(0,numSymbols-1);
+          const syms = [forcedChar,...others].sort(()=>0.5-Math.random());
+          const [symA,symB,symC,symD,symE] = syms;
+          let A,B,C,D,E,targetArr,answer;
+          let equations = [];
+          
+          switch(level){
+            case 1:
+              [A, B, C] = getUniqueRandoms(3, 1, 9);
+              answer = A + B + C;
+              targetArr = [symA, '+', symB, '+', symC, '=', '?'];
+              equations.push([symA, '+', symA, '=', A + A]);
+              equations.push(Math.random() > 0.5 ? [symA, '+', symB, '=', A + B] : [symB, '+', symA, '=', B + A]);
+              equations.push(Math.random() > 0.5 ? [symB, '+', symC, '=', B + C] : [symC, '+', symB, '=', C + B]);
+              break;
+
+            case 2:
+              [A, B, C, D] = getUniqueRandoms(4, 1, 9);
+              answer = A + B + C + D;
+              targetArr = [symA, '+', symB, '+', symC, '+', symD, '=', '?'];
+              equations.push([symA, '+', symA, '=', A + A]);
+              equations.push([symB, '+', symA, '=', B + A]);
+              equations.push([symC, '+', symB, '=', C + B]);
+              equations.push([symD, '+', symC, '=', D + C]);
+              break;
+
+            case 3:
+              [A, B, C] = getUniqueRandoms(3, 1, 9);
+              if (A < B) { let t = A; A = B; B = t; } 
+              answer = A + B - C;
+              targetArr = [symA, '+', symB, '-', symC, '=', '?'];
+              equations.push(Math.random() > 0.5 ? [symA, '+', symA, '=', A + A] : [symA, '×', symA, '=', A * A]);
+              equations.push([symA, '-', symB, '=', A - B]);
+              equations.push(makeEq([symC, '+', symC], C * 2, [symA], A));
+              break;
+
+            case 4:
+              [A, B, C, D] = getUniqueRandoms(4, 1, 9);
+              answer = A * B + C - D;
+              targetArr = [symA, '×', symB, '+', symC, '-', symD, '=', '?'];
+              equations.push(Math.random() > 0.5 ? [symA, '+', symA, '=', A + A] : [symA, '×', symA, '=', A * A]);
+              equations.push([symB, '×', symA, '=', B * A]);
+              equations.push([symC, '+', symB, '=', C + B]);
+              equations.push(makeEq([symD, '×', 2], D * 2, [symB], B));
+              break;
+
+            case 5:
+              [A, B, C, D] = getUniqueRandoms(4, 1, 9);
+              answer = A + B * C - D;
+              targetArr = [symA, '+', symB, '×', symC, '-', symD, '=', '?'];
+              const r5 = Math.random();
+              if (r5 < 0.33) equations.push([symA, '+', symA, '=', A + A]);
+              else if (r5 < 0.66) equations.push([symA, '×', symA, '=', A * A]);
+              else equations.push([symA, '+', symA, '+', symA, '=', A * 3]);
+              
+              equations.push([symB, '+', symA, '=', B + A]);
+              equations.push(makeEq([symA, '×', symB], A * B, [symC], C));
+              equations.push(makeEq([symD, '+', symC], D + C, [symA], A));
+              break;
+
+            case 6:
+              [A, B, C, D, E] = getUniqueRandoms(5, 1, 9);
+              answer = A * B + C * D - E;
+              targetArr = [symA, '×', symB, '+', symC, '×', symD, '-', symE, '=', '?'];
+              const r6 = Math.random();
+              if (r6 < 0.33) equations.push([symA, '+', symA, '=', A + A]);
+              else if (r6 < 0.66) equations.push([symA, '×', symA, '=', A * A]);
+              else equations.push([symA, '+', symA, '+', symA, '=', A * 3]);
+              
+              equations.push(makeEq([symB, '×', 2], B * 2, [symA], A));
+              equations.push(makeEq([symA, '×', 3], A * 3, [symC], C));
+              equations.push(makeEq([symD, '+', symB], D + B, [symC, '×', 2], C * 2));
+              equations.push(makeEq([symE, '+', symD], E + D, [symA, '×', symB], A * B));
+              break;
+
+            default:
+              A=1;B=2;C=3;answer=6;targetArr=[symA,'+',symB,'+',symC,'=','?'];
+              equations.push([symA,'+',symA,'=',2]);
+              equations.push([symA,'+',symB,'=',3]);
+              equations.push([symC,'+',symA,'=',4]);
+          }
+          if(answer <= 0) continue; 
+          const trueValues={[symA]:A,[symB]:B,[symC]:C};
+          if(D!==undefined)trueValues[symD]=D;
+          if(E!==undefined)trueValues[symE]=E;
+          result={equations,target:targetArr,answer,symbols:syms,trueValues};
+          } while(!result);
+          return result;
+        };
+
+        const launchConfetti = () => {
+          const colors=['#FBD000','#43B047','#005FCE','#DE2B2B','#F28B00','#FF69B4','#FFD700'];
+          for(let i=0;i<80;i++){
+            const el=document.createElement('div');el.className='confetti-piece';
+            el.style.left=Math.random()*100+'vw';
+            el.style.backgroundColor=colors[Math.floor(Math.random()*colors.length)];
+            el.style.animationDuration=(1.5+Math.random()*2)+'s';
+            el.style.animationDelay=(Math.random()*0.5)+'s';
+            el.style.width=(6+Math.random()*10)+'px';el.style.height=(6+Math.random()*10)+'px';
+            if(Math.random()>0.5)el.style.borderRadius='50%';
+            document.body.appendChild(el);setTimeout(()=>el.remove(),4000);
+          }
+        };
+
+        const CharIcon = ({charId,className}) => {
+          const[imgError,setImgError]=useState(false);
+          const char=CHARACTERS[charId];if(!char)return null;
+          if(imgError)return<span className={className}>{char.fallback}</span>;
+          return<img src={char.imageUrl} alt={char.id} className={`${className} object-contain pointer-events-none`} onError={()=>setImgError(true)}/>;
+        };
+
+        const EquationDisplay = ({parts,isTarget}) => (
+          <div className={`flex flex-wrap items-center justify-center gap-y-1 gap-x-1 md:gap-x-2 font-black w-full ${isTarget?'text-white m-0':'text-[#1F4E79] flex-grow'}`} dir="ltr">
+            {parts.map((part,i)=>{
+              if(typeof part==='string'&&CHARACTERS[part])return<CharIcon key={i} charId={part} className="h-[3.5vh] sm:h-[4vh] w-auto max-h-8 sm:max-h-10 filter drop-shadow-md"/>;
+              if(typeof part==='number'||part==='?')return<span key={i} className="equation-text">{part}</span>;
+              return<span key={i} className={`equation-text ${isTarget?'text-white':'text-[#43B047]'}`}>{part}</span>;
+            })}
+          </div>
+        );
+
+        const FoulIndicator = ({type,remaining,total,className}) => {
+          const charId=type==='luigi'?'luigy':'mario';
+          return(
+            <div className={`flex items-center gap-1 ${className}`}>
+              {Array.from({length:total}).map((_,i)=>(
+                <div key={i} className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-[#1F4E79] overflow-hidden bg-white flex items-center justify-center shadow-md ${i>=remaining?'foul-used':''}`}>
+                  <CharIcon charId={charId} className="h-[85%] w-[85%]"/>
+                </div>
+              ))}
+            </div>
+          );
+        };
+
+        const ResultModal = ({type,attempts,onAction,isLevel6}) => {
+          const isWin=type==='win';
+          const isPerfect=isWin&&attempts===1;
+          const buttonText = isWin ? (isLevel6 ? 'לסיום המשחק' : 'לשלב הבא') : 'נסה שוב';
+
+          return(
+            <div className="modal-overlay" onClick={onAction}>
+              <div className="modal-box bg-white rounded-3xl border-4 border-[#1F4E79] shadow-2xl p-6 sm:p-8 max-w-sm w-[90%] text-center cursor-pointer" onClick={onAction}>
+                {isPerfect?(
+                  <><div className="text-5xl mb-3">⭐⭐⭐</div>
+                  <h2 className="text-2xl sm:text-3xl font-black text-[#43B047] mb-2">אליפות!</h2>
+                  <p className="text-lg sm:text-xl font-bold text-[#1F4E79]">נצחון מושלם בניסיון הראשון!</p></>
+                ):isWin?(
+                  <><div className="text-5xl mb-3">⭐</div>
+                  <h2 className="text-2xl sm:text-3xl font-black text-[#43B047] mb-2">כל הכבוד!</h2>
+                  <p className="text-lg sm:text-xl font-bold text-[#1F4E79]">הצלחת בניסיון ה-{attempts}</p></>
+                ):(
+                  <><div className="text-5xl mb-3">😢</div>
+                  <h2 className="text-2xl sm:text-3xl font-black text-[#DE2B2B] mb-2">לא נורא...</h2>
+                  <p className="text-lg sm:text-xl font-bold text-[#1F4E79]">המשחק נגמר, נסה שוב!</p></>
+                )}
+                <button onClick={onAction}
+                  className="mt-6 px-8 py-3 bg-[#005FCE] hover:bg-blue-600 text-white font-black text-lg sm:text-xl rounded-xl border-2 border-[#1F4E79] shadow-md active:scale-95 transition-transform w-full">
+                  {buttonText}
+                </button>
+              </div>
+            </div>
+          );
+        };
+
+        // --- חלון מודאל לטבלת אלופים (פודיום) ---
+        const LeaderboardModal = ({ onClose }) => {
+            const lb = JSON.parse(localStorage.getItem('luigiLeaderboard') || '[]');
+            return (
+                <div className="modal-overlay cursor-pointer" onClick={onClose}>
+                    <div className="modal-box bg-white rounded-3xl border-4 border-[#1F4E79] shadow-2xl p-6 sm:p-8 max-w-sm w-[90%] text-center cursor-pointer" onClick={onClose}>
+                        <h2 className="text-2xl sm:text-3xl font-black text-[#1F4E79] mb-4">🏆 אלופים 🏆</h2>
+                        {lb.length === 0 ? (
+                            <p className="text-gray-500 font-bold mb-4">אין עדיין תוצאות...</p>
+                        ) : (
+                            <div className="flex flex-col gap-2 mb-6">
+                                {lb.map((entry, idx) => (
+                                    <div key={idx} className={`flex justify-between items-center p-2 rounded-lg border-2 border-[#1F4E79] ${idx === 0 ? 'bg-[#FBD000]' : 'bg-gray-50'}`}>
+                                        <span className="font-bold w-6 text-right">#{idx+1}</span>
+                                        <span className="font-bold flex items-center gap-1 w-16">
+                                            <img src="./pics/star.png" alt="star" className="w-4 h-4 object-contain drop-shadow-sm" />{entry.stars}
+                                        </span>
+                                        <span className="font-bold flex items-center gap-1 w-16">
+                                            <img src="./pics/coin.png" alt="coin" className="w-4 h-4 object-contain drop-shadow-sm" />{entry.coins}
+                                        </span>
+                                        <span className="text-sm text-gray-600 w-20 text-left">{entry.date}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        <p className="text-sm text-gray-500 font-bold mt-2">(הקלק לסגירה)</p>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- מסך סיום המשחק ---
+        const EndGameScreen = ({ stars, coins, onRestart }) => {
+            const [leaderboard, setLeaderboard] = useState([]);
+
+            useEffect(() => {
+                playSynthSound('PERFECT_WIN'); 
+                launchConfetti();
+                
+                const lb = JSON.parse(localStorage.getItem('luigiLeaderboard') || '[]');
+                lb.push({ 
+                    stars: stars, 
+                    coins: coins, 
+                    date: new Date().toLocaleDateString('he-IL'),
+                    timestamp: Date.now()
+                });
+                
+                // מיון: כוכבים (יורד) -> מטבעות (יורד) -> תאריך (יורד, החדש ביותר עליון)
+                lb.sort((a, b) => b.stars - a.stars || b.coins - a.coins || b.timestamp - a.timestamp);
+                const top5 = lb.slice(0, 5);
+                
+                localStorage.setItem('luigiLeaderboard', JSON.stringify(top5));
+                setLeaderboard(top5);
+            }, [stars, coins]);
+
+            const handleClearLeaderboard = () => {
+                if(window.confirm('למחוק את טבלת התוצאות?')) {
+                    localStorage.removeItem('luigiLeaderboard');
+                    setLeaderboard([]);
+                }
+            };
+
+            return (
+                <div className="h-full w-full bg-[#81B9E6] flex flex-col items-center justify-center p-2">
+                    <div className="w-full max-w-lg bg-white rounded-3xl border-[6px] border-[#1F4E79] shadow-2xl p-6 flex flex-col items-center text-center">
+                        <h1 className="text-4xl sm:text-5xl font-black text-[#43B047] mb-2 drop-shadow-md">סיום המשחק!</h1>
+                        
+                        <p className="text-[#1F4E79] font-bold text-xl mb-4">התוצאה הסופית שלך:</p>
+
+                        <div className="flex justify-center gap-8 mb-6 bg-[#B3D4F0] w-full p-4 rounded-2xl border-4 border-[#1F4E79]">
+                            <div className="flex flex-col items-center" id="end-star-icon">
+                                <img src="./pics/star.png" alt="star" className="w-12 h-12 sm:w-16 sm:h-16 mb-1 drop-shadow-md object-contain" />
+                                <span className="text-3xl font-black text-[#1F4E79]">{stars}</span>
+                            </div>
+                            <div className="flex flex-col items-center" id="end-coin-icon">
+                                <img src="./pics/coin.png" alt="coin" className="w-12 h-12 sm:w-16 sm:h-16 mb-1 drop-shadow-md object-contain" />
+                                <span className="text-3xl font-black text-[#1F4E79]">{coins}</span>
+                            </div>
+                        </div>
+
+                        <div className="w-full mt-2">
+                            <h3 className="text-2xl font-black text-[#DE2B2B] mb-3">המשחקים הטובים ביותר:</h3>
+                            <div className="flex flex-col gap-2 mb-6">
+                                {leaderboard.length === 0 ? (
+                                    <p className="text-gray-500 font-bold">אין עדיין תוצאות...</p>
+                                ) : leaderboard.map((entry, idx) => (
+                                    <div key={idx} className={`flex justify-between items-center p-2 rounded-lg border-2 border-[#1F4E79] ${idx === 0 ? 'bg-[#FBD000]' : 'bg-gray-50'}`}>
+                                        <span className="font-bold w-6 text-right">#{idx+1}</span>
+                                        <span className="font-bold flex items-center gap-1 w-16">
+                                            <img src="./pics/star.png" className="w-4 h-4 object-contain drop-shadow-sm" />{entry.stars}
+                                        </span>
+                                        <span className="font-bold flex items-center gap-1 w-16">
+                                            <img src="./pics/coin.png" className="w-4 h-4 object-contain drop-shadow-sm" />{entry.coins}
+                                        </span>
+                                        <span className="text-sm text-gray-600 w-20 text-left">{entry.date}</span>
+                                    </div>
+                                ))}
+                            </div>
+                            <button onClick={onRestart} className="px-8 py-3 bg-[#43B047] hover:bg-green-600 text-white font-black text-xl rounded-xl border-2 border-[#1F4E79] shadow-md w-full transition-transform active:scale-95">
+                                שחק שוב
+                            </button>
+                            {leaderboard.length > 0 && (
+                                <button onClick={handleClearLeaderboard} className="text-[#DE2B2B] hover:text-red-700 font-bold text-sm underline mt-4 transition-colors">
+                                    אפס טבלת תוצאות
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const useDragAndDrop = (onDropOnTarget) => {
+          const ref=useRef({isDragging:false,number:null,ghostEl:null,startX:0,startY:0,moved:false});
+          const pos=(e)=>{
+            if(e.touches?.length>0)return{x:e.touches[0].clientX,y:e.touches[0].clientY};
+            if(e.changedTouches?.length>0)return{x:e.changedTouches[0].clientX,y:e.changedTouches[0].clientY};
+            return{x:e.clientX,y:e.clientY};
+          };
+          const ghost=(n,x,y)=>{const g=document.createElement('div');g.className='drag-ghost';g.textContent=n;g.style.left=x+'px';g.style.top=y+'px';document.body.appendChild(g);return g;};
+          const clean=()=>{const s=ref.current;if(s.ghostEl){s.ghostEl.remove();s.ghostEl=null;}document.querySelectorAll('.drop-target-active').forEach(e=>e.classList.remove('drop-target-active'));};
+          const findDT=(x,y)=>{for(const e of document.elementsFromPoint(x,y)){if(e.dataset.dropTarget)return e.dataset.dropTarget;}return null;};
+          const hlDT=(x,y)=>{document.querySelectorAll('.drop-target-active').forEach(e=>e.classList.remove('drop-target-active'));for(const e of document.elementsFromPoint(x,y)){if(e.dataset.dropTarget){e.classList.add('drop-target-active');break;}}};
+          const handleStart=useCallback((e,number)=>{
+            if(e.type==='mousedown'&&e.button!==0)return;
+            const p=pos(e);const s=ref.current;
+            s.isDragging=true;s.number=number;s.startX=p.x;s.startY=p.y;s.moved=false;s.ghostEl=null;
+            e.preventDefault();
+          },[]);
+          useEffect(()=>{
+            const onMove=(e)=>{const s=ref.current;if(!s.isDragging)return;const p=pos(e);
+              if(!s.moved&&Math.abs(p.x-s.startX)+Math.abs(p.y-s.startY)>5){s.moved=true;s.ghostEl=ghost(s.number,p.x,p.y);}
+              if(s.moved&&s.ghostEl){s.ghostEl.style.left=p.x+'px';s.ghostEl.style.top=p.y+'px';hlDT(p.x,p.y);}e.preventDefault();
+            };
+            const onEnd=(e)=>{const s=ref.current;if(!s.isDragging)return;const p=pos(e);
+              if(s.moved){if(s.ghostEl)s.ghostEl.style.display='none';const t=findDT(p.x,p.y);if(s.ghostEl)s.ghostEl.style.display='';if(t&&onDropOnTarget)onDropOnTarget(t,s.number.toString());}
+              clean();s.isDragging=false;s.number=null;s.moved=false;
+            };
+            document.addEventListener('mousemove',onMove,{passive:false});document.addEventListener('mouseup',onEnd);
+            document.addEventListener('touchmove',onMove,{passive:false});document.addEventListener('touchend',onEnd);document.addEventListener('touchcancel',onEnd);
+            return()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onEnd);
+              document.removeEventListener('touchmove',onMove);document.removeEventListener('touchend',onEnd);document.removeEventListener('touchcancel',onEnd);};
+          },[onDropOnTarget]);
+          return{handleStart};
+        };
+
+        function App(){
+          const [gameState, setGameState] = useState('playing'); // playing | finished
+          const [level, setLevel] = useState(1);
+          const [puzzle, setPuzzle] = useState(null);
+          const [userAnswer, setUserAnswer] = useState('');
+          const [symbolValues, setSymbolValues] = useState({});
+          const [draftStatus, setDraftStatus] = useState({});
+          const [luigiFouls, setLuigiFouls] = useState(3);
+          const [marioFouls, setMarioFouls] = useState(3);
+          const [attempts, setAttempts] = useState(1);
+          const [modal, setModal] = useState(null);
+          const [showLeaderboard, setShowLeaderboard] = useState(false); 
+          
+          // ניקוד
+          const [totalStars, setTotalStars] = useState(0);
+          const [totalCoins, setTotalCoins] = useState(0);
+          // תצוגת ניקוד שמסתנכרנת עם האנימציה
+          const [displayStars, setDisplayStars] = useState(0);
+          const [displayCoins, setDisplayCoins] = useState(0);
+
+          const puzzleRef=useRef(puzzle);puzzleRef.current=puzzle;
+          
+          // סאונד מתי שעולה מספר הניסיונות
+          const prevAttempts = useRef(attempts);
+          useEffect(() => {
+              if (attempts > prevAttempts.current && attempts > 1) {
+                  playSynthSound('ATTEMPT_UP');
+              }
+              prevAttempts.current = attempts;
+          }, [attempts]);
+
+          const handleNewPuzzle=(selectedLevel=level)=>{
+            setLevel(selectedLevel);
+            setPuzzle(generatePuzzle(selectedLevel));
+            setUserAnswer('');
+            setSymbolValues({});
+            setDraftStatus({});
+            setLuigiFouls(3);
+            setMarioFouls(3);
+            setAttempts(1);
+            setModal(null);
+          };
+
+          const handleManualLevelClick = (selectedLevel) => {
+            setLevel(selectedLevel);
+            setPuzzle(generatePuzzle(selectedLevel));
+            setUserAnswer('');
+            setSymbolValues({});
+            setDraftStatus({});
+            setLuigiFouls(3);
+            setMarioFouls(3);
+            setAttempts(prev => prev + 1);
+            setModal(null);
+          };
+
+          const resetRound=()=>{
+            setUserAnswer('');setSymbolValues({});setDraftStatus({});
+            setLuigiFouls(3);setMarioFouls(3);setAttempts(prev=>prev+1);setModal(null);
+          };
+
+          const restartFullGame = () => {
+              setTotalStars(0); setDisplayStars(0);
+              setTotalCoins(0); setDisplayCoins(0);
+              setGameState('playing');
+              handleNewPuzzle(1);
+          };
+
+          useEffect(()=>{handleNewPuzzle(1);},[]);
+
+          const handleSubmit=(e)=>{
+            if(e)e.preventDefault();
+            if((!userAnswer&&userAnswer!=='0')||modal)return;
+            
+            if(parseInt(userAnswer,10)===puzzle.answer){
+              launchConfetti();
+              
+              const starsEarned = attempts === 1 ? 3 : 1;
+              if (attempts === 1) playSynthSound('PERFECT_WIN');
+              else playSynthSound('WIN');
+              
+              setTotalStars(prev => prev + starsEarned);
+              
+              // אנימציית כוכבים
+              animateItem('star', 'final-answer-box', 'star-score-icon', false, starsEarned, () => {
+                  setDisplayStars(prev => prev + 1);
+              });
+
+              if (level === 6) {
+                  setModal({type:'win'});
+              } else {
+                  setModal({type:'win'});
+              }
+
+            }else{
+              playSynthSound('MISTAKE');
+              setUserAnswer('');
+              
+              setTotalStars(prev => Math.max(0, prev - 1));
+              setDisplayStars(prev => Math.max(0, prev - 1));
+              animateItem('star', 'final-answer-box', 'star-score-icon', true, 1, ()=>{});
+
+              setLuigiFouls(prev=>{
+                const n=prev-1;
+                if(n<=0){ 
+                    setTimeout(()=>setModal({type:'loss'}),300); 
+                    playSynthSound('FAIL');
+                }
+                return Math.max(0,n);
+              });
+            }
+          };
+
+          const validateDraftInput=useCallback((charId,valStr)=>{
+            if(valStr===''){setSymbolValues(p=>({...p,[charId]:''}));setDraftStatus(p=>({...p,[charId]:null}));return;}
+            const p=puzzleRef.current;if(!p)return;
+            
+            if(parseInt(valStr,10)===p.trueValues[charId]){
+              playSynthSound('CORRECT'); 
+              setDraftStatus(pr=>({...pr,[charId]:'correct'}));
+              setSymbolValues(pr=>({...pr,[charId]:valStr}));
+              
+              setTotalCoins(prev => prev + 3);
+              animateItem('coin', `draft-cell-${charId}`, 'coin-score-icon', false, 3, () => {
+                  setDisplayCoins(prev => prev + 1);
+              });
+
+            }else{
+              playSynthSound('MISTAKE'); 
+              setDraftStatus(pr=>({...pr,[charId]:'error'}));
+              setSymbolValues(pr=>({...pr,[charId]:''}));
+              
+              setTotalCoins(prev => Math.max(0, prev - 1));
+              setDisplayCoins(prev => Math.max(0, prev - 1));
+              animateItem('coin', `draft-cell-${charId}`, 'coin-score-icon', true, 1, ()=>{});
+
+              setMarioFouls(prev=>{
+                const n=prev-1;
+                if(n<=0){
+                  setLuigiFouls(lp=>{
+                    const nl=lp-1;
+                    if(nl<=0){
+                      setTimeout(()=>setModal({type:'loss'}),300);
+                      playSynthSound('FAIL'); 
+                    }
+                    return Math.max(0,nl);
+                  });
+                  return 3;
+                }
+                return n;
+              });
+              setTimeout(()=>{setDraftStatus(pr=>({...pr,[charId]:null}));},800);
+            }
+          }, []);
+
+          const handleDropOnTarget=useCallback((targetId,numberStr)=>{
+            if(targetId==='answer')setUserAnswer(prev=>prev+numberStr);else validateDraftInput(targetId,numberStr);
+          },[validateDraftInput]);
+
+          const{handleStart}=useDragAndDrop(handleDropOnTarget);
+          const handleNumberTap=(num)=>{setUserAnswer(prev=>prev+num.toString());};
+          
+          const handleModalAction=()=>{
+              if(modal?.type==='win') {
+                  if (level === 6) {
+                      setGameState('finished');
+                  } else {
+                      handleNewPuzzle(level + 1); 
+                  }
+              } else {
+                  resetRound();
+              }
+          };
+
+          if (gameState === 'finished') {
+              return <EndGameScreen stars={totalStars} coins={totalCoins} onRestart={restartFullGame} />;
+          }
+
+          if(!puzzle)return<div className="flex h-full items-center justify-center text-3xl font-black text-[#1F4E79]">...טוען משחק</div>;
+
+          return(
+            <div className="h-full w-full flex flex-col items-center justify-center p-1 sm:p-2">
+              <div className="w-full max-w-4xl h-full max-h-[98vh] bg-[#B3D4F0] rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden border-[4px] sm:border-[6px] border-[#1F4E79] shadow-2xl flex flex-col">
+                
+                {/* 1. Header Section */}
+                <div className="bg-[#43B047] h-20 sm:h-28 text-white border-b-[4px] sm:border-b-[6px] border-[#1F4E79] flex-shrink-0 relative overflow-hidden flex items-center justify-center">
+                  <img 
+                    src="./pics/LUIGY CODE.png" 
+                    alt="קוד לואיג'י"
+                    className="h-[55%] sm:h-[65%] w-auto object-contain z-10 pr-[10%] sm:pr-[15%] drop-shadow-xl"
+                    onError={(e) => e.target.style.display = 'none'}
+                  />
+                  <div className="absolute right-0 top-0 bottom-0 h-full flex items-center z-20 pointer-events-none">
+                    <img 
+                      src="./pics/Luigy Logo - final.png" 
+                      alt="Luigy Logo"
+                      className="h-full w-auto object-contain block transform scale-110 origin-right"
+                      onError={(e) => e.target.style.display = 'none'}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex-grow flex flex-col p-1.5 sm:p-3 gap-1.5 sm:gap-2 overflow-hidden">
+                  
+                  {/* 2. Score Area */}
+                  <div className="bg-[#FFF9C4] rounded-xl sm:rounded-2xl py-1.5 px-4 sm:py-2 sm:px-6 border-2 sm:border-4 border-[#F28B00] shadow-sm flex justify-between items-center flex-shrink-0">
+                      
+                      <button onClick={() => setShowLeaderboard(true)} className="w-8 h-8 sm:w-12 sm:h-12 bg-transparent rounded-full border-2 sm:border-[3px] border-[#1F4E79] flex items-center justify-center hover:bg-[#F28B00]/20 active:scale-95 shadow-sm transition-colors text-lg sm:text-2xl" title="טבלת אלופים">
+                          🏆
+                      </button>
+
+                      <div className="flex justify-center items-center gap-6 sm:gap-16 flex-grow" dir="ltr">
+                          <div className="flex items-center gap-1 sm:gap-2" id="coin-score-icon">
+                              <span className="font-black text-[#1F4E79] text-2xl sm:text-4xl leading-none">{displayCoins}</span>
+                              <img src="./pics/coin.png" alt="coin" className="w-7 h-7 sm:w-10 sm:h-10 object-contain drop-shadow-sm" />
+                          </div>
+                          <div className="flex items-center gap-1 sm:gap-2" id="star-score-icon">
+                              <span className="font-black text-[#1F4E79] text-2xl sm:text-4xl leading-none">{displayStars}</span>
+                              <img src="./pics/star.png" alt="star" className="w-7 h-7 sm:w-10 sm:h-10 object-contain drop-shadow-sm" />
+                          </div>
+                      </div>
+
+                      <div className="w-8 sm:w-12"></div>
+                  </div>
+
+                  {/* 3. Levels Area */}
+                  <div className="bg-[#81B9E6] rounded-xl sm:rounded-2xl py-1.5 px-4 border-2 sm:border-4 border-[#1F4E79] shadow-sm flex justify-between items-center flex-shrink-0">
+                      
+                      <div className="flex items-center gap-2 sm:gap-3">
+                          <div className="w-8 h-8 sm:w-12 sm:h-12 bg-transparent rounded-full border-2 sm:border-[3px] border-[#DE2B2B] text-[#DE2B2B] flex items-center justify-center font-black text-lg sm:text-2xl shadow-sm cursor-default" title="מספר ניסיונות">
+                              {attempts}
+                          </div>
+                          <button onClick={restartFullGame} className="w-8 h-8 sm:w-12 sm:h-12 bg-transparent rounded-full border-2 sm:border-[3px] border-[#1F4E79] text-[#1F4E79] flex items-center justify-center hover:bg-[#1F4E79] hover:text-white active:scale-95 shadow-sm transition-colors" title="משחק חדש משלב 1">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              </svg>
+                          </button>
+                      </div>
+                      
+                      <div className="flex items-center gap-1.5 sm:gap-3" dir="ltr">
+                          {[1, 2, 3, 4, 5, 6].map(l => (
+                              <button key={l} onClick={() => handleManualLevelClick(l)}
+                                className={`w-8 h-8 sm:w-12 sm:h-12 rounded-lg font-black text-sm sm:text-2xl flex items-center justify-center transition-transform hover:scale-110 shadow-md flex-shrink-0 ${level === l ? 'bg-[#FBD000] text-[#43B047] border-2 sm:border-4 border-white' : 'bg-[#005FCE] text-white border-2 border-[#1F4E79]'}`}>
+                                {l}
+                              </button>
+                          ))}
+                      </div>
+                  </div>
+                  
+                  {/* Equations Area */}
+                  <div className="bg-white rounded-xl sm:rounded-2xl py-1 px-1.5 sm:py-1.5 sm:px-3 border-2 sm:border-4 border-[#1F4E79] shadow-md flex flex-col flex-shrink-0">
+                    {puzzle.equations.map((eqArr,i)=>(
+                      <div key={i} className="flex justify-center items-center py-0.5">
+                        <EquationDisplay parts={eqArr} isTarget={false}/>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Draft Area (Mario) */}
+                  <div className="bg-[#F28B00] rounded-xl sm:rounded-2xl pt-12 pb-4 px-3 sm:pt-16 sm:pb-6 sm:px-6 border-2 sm:border-4 border-[#1F4E79] shadow-md flex flex-col items-center justify-start flex-shrink-0 relative">
+                    <FoulIndicator type="mario" remaining={marioFouls} total={3} className="absolute top-2.5 left-2.5" />
+                    <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mt-1" dir="ltr">
+                      {puzzle.symbols.map((charId,idx)=>{
+                        const status=draftStatus[charId];
+                        let boxCls="bg-white border-[#1F4E79]";
+                        if(status==='correct')boxCls="bg-[#D1F2D0] border-[#1F4E79] success-animation";
+                        if(status==='error')boxCls="bg-[#FFD1D1] border-[#1F4E79] shake-animation";
+                        return(
+                          <div key={idx} id={`draft-cell-${charId}`} data-drop-target={charId}
+                            className={`relative rounded-lg sm:rounded-xl border-2 sm:border-4 shadow-md transition-colors duration-300 ${boxCls} flex-shrink-0`}
+                            style={{width:'clamp(2.8rem, 6.5vw, 4.2rem)',height:'clamp(2.8rem, 6.5vw, 4.2rem)'}}>
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden rounded-lg">
+                              <CharIcon charId={charId} className="h-[80%] w-[80%] object-contain"/>
+                            </div>
+                            {symbolValues[charId]&&(
+                              <div className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 bg-white border-2 border-[#1F4E79] text-[#1F4E79] font-black text-sm sm:text-xl w-6 h-6 sm:w-9 sm:h-9 flex items-center justify-center rounded-md sm:rounded-lg shadow-lg z-30 pointer-events-none">
+                                {symbolValues[charId]}
+                              </div>
+                            )}
+                            <input type="number" data-drop-target={charId}
+                              className="absolute inset-0 w-full h-full bg-transparent text-transparent caret-transparent focus:outline-none z-20 cursor-pointer"
+                              value={symbolValues[charId]||''}
+                              onChange={(e)=>{validateDraftInput(charId,e.target.value.charAt(e.target.value.length-1));}}
+                              disabled={marioFouls<=0}/>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Final Question Area (Luigi) */}
+                  <div className="bg-[#005FCE] pt-10 pb-4 px-2 sm:pt-14 sm:pb-6 sm:px-4 rounded-xl sm:rounded-2xl border-2 sm:border-4 border-[#1F4E79] shadow-md flex flex-col items-center justify-start flex-grow relative min-h-0">
+                    <FoulIndicator type="luigi" remaining={luigiFouls} total={3} className="absolute top-2.5 left-2.5" />
+                    
+                    <div className="w-full flex flex-col items-center justify-start mt-1 sm:mt-2">
+                      <EquationDisplay parts={puzzle.target.slice(0,-2)} isTarget={true}/>
+                      <div className="flex items-center justify-center gap-2 sm:gap-3 mt-1 sm:mt-2" dir="ltr">
+                        <input type="number" id="final-answer-box" data-drop-target="answer"
+                          value={userAnswer} onChange={(e)=>setUserAnswer(e.target.value)}
+                          className="w-16 h-8 sm:w-24 sm:h-12 text-center text-lg sm:text-2xl font-black rounded-xl border-3 border-[#1F4E79] bg-white text-[#1F4E79] focus:outline-none focus:ring-2 focus:ring-white shadow-sm"
+                          dir="ltr" autoComplete="off"/>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Keyboard Area */}
+                <div className="bg-[#DE2B2B] p-2 sm:p-3 border-t-[4px] sm:border-t-[6px] border-[#1F4E79] flex justify-center items-center flex-shrink-0">
+                  <div className="flex items-center gap-2 sm:gap-3" dir="ltr">
+                    <button type="button" onClick={()=>setUserAnswer('')}
+                      className="w-11 h-11 sm:w-14 sm:h-14 bg-[#FFa000] hover:bg-orange-400 text-white rounded-lg sm:rounded-xl border-2 border-[#1F4E79] shadow-md active:scale-95 transition-transform flex items-center justify-center cursor-pointer flex-shrink-0">
+                      <span className="text-base sm:text-2xl">⌫</span>
+                    </button>
+                    <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5 sm:gap-2">
+                      {[1,2,3,4,5,6,7,8,9,0].map(num=>(
+                        <div key={num}
+                          onMouseDown={(e)=>handleStart(e,num)}
+                          onTouchStart={(e)=>handleStart(e,num)}
+                          onClick={()=>handleNumberTap(num)}
+                          className="draggable-number w-11 h-11 sm:w-14 sm:h-14 bg-[#FBD000] rounded-lg sm:rounded-xl border-2 border-[#1F4E79] flex items-center justify-center text-base sm:text-2xl font-black text-[#1F4E79] shadow-md hover:bg-yellow-300 active:bg-yellow-400 transition-colors">
+                          {num}
+                        </div>
+                      ))}
+                    </div>
+                    <button type="button" onClick={handleSubmit}
+                      className="w-11 h-11 sm:w-14 sm:h-14 bg-[#43B047] hover:bg-green-500 text-white rounded-lg sm:rounded-xl border-2 border-[#1F4E79] shadow-md active:scale-95 transition-transform flex items-center justify-center flex-shrink-0">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-7 sm:w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Leaderboard Modal (Podium) */}
+              {showLeaderboard && <LeaderboardModal onClose={() => setShowLeaderboard(false)} />}
+              
+              {/* Result Modal */}
+              {modal&&<ResultModal type={modal.type} attempts={attempts} onAction={handleModalAction} isLevel6={level === 6}/>}
+            </div>
+          );
+        }
+
+        const root=ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App/>);
+    </script>
+</body>
+</html>
