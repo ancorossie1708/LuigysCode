@@ -1,6 +1,7 @@
-const CACHE_NAME = 'luigy-cache-v1';
+const CACHE_NAME = 'luigy-cache-v2';
 const urlsToCache = [
-  './LuigyCode.html',
+  './',
+  './index.html',
   './icon.png',
   './pics/star.png',
   './pics/coin.png',
