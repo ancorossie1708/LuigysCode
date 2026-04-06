@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>קוד לואיג'י</title>
     
-    <!-- === הגדרות PWA (כדי שהמשחק יותקן כאפליקציה) === -->
-    <link rel="manifest" href="./manifest.json">
+    <!-- === PWA Settings === -->
+    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#43B047">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="קוד לואיג'י">
-    <link rel="apple-touch-icon" href="./icon.png">
+    <link rel="apple-touch-icon" href="icon.png">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
@@ -21,8 +21,10 @@
     <style>
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            margin: 0; padding: 0; overflow: hidden; 
-            height: 100vh; height: 100dvh;
+            margin: 0; padding: 0; 
+            overflow: hidden; 
+            height: 100vh; 
+            height: 100dvh; 
             background-color: #81B9E6;
         }
         #root { height: 100%; }
@@ -45,8 +47,6 @@
             100% { transform: scale(1); }
         }
         .success-animation { animation: success-pop 0.4s ease-out; }
-
-        .equation-text { font-size: clamp(1rem, 3.5vh, 1.8rem); }
 
         .drag-ghost {
             position: fixed; pointer-events: none; z-index: 9999;
@@ -78,6 +78,9 @@
             100% { transform: scale(1); opacity: 1; }
         }
         .modal-box { animation: modal-pop 0.4s ease-out forwards; }
+        
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body>
@@ -94,9 +97,7 @@
 
             const startRect = startEl.getBoundingClientRect();
             const endRect = endEl.getBoundingClientRect();
-            const imgSrc = type === 'coin' 
-                ? './pics/coin.png' 
-                : './pics/star.png';
+            const imgSrc = type === 'coin' ? './pics/coin.png' : './pics/star.png';
 
             for (let i = 0; i < count; i++) {
                 setTimeout(() => {
@@ -150,29 +151,21 @@
             try {
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
                 if (!AudioContext) return;
-                
-                if (!window.audioCtx) {
-                    window.audioCtx = new AudioContext();
-                }
+                if (!window.audioCtx) window.audioCtx = new AudioContext();
                 const ctx = window.audioCtx;
-                if (ctx.state === 'suspended') {
-                    ctx.resume();
-                }
-                
+                if (ctx.state === 'suspended') ctx.resume();
                 const now = ctx.currentTime;
 
-                const createOsc = (type, freq, time, duration, vol=0.15, attack=0.02) => {
+                const createOsc = (t, freq, time, duration, vol=0.15, attack=0.02) => {
                     const osc = ctx.createOscillator();
                     const gain = ctx.createGain();
-                    osc.type = type;
+                    osc.type = t;
                     osc.connect(gain);
                     gain.connect(ctx.destination);
-                    
                     osc.frequency.setValueAtTime(freq, time);
                     gain.gain.setValueAtTime(0, time);
                     gain.gain.linearRampToValueAtTime(vol, time + attack);
                     gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
-                    
                     osc.start(time);
                     osc.stop(time + duration);
                     return {osc, gain};
@@ -188,30 +181,26 @@
                         createOsc('triangle', 150, now + 0.1, 0.25, 0.2, 0.01);
                         break;
                     case 'FAIL':
-                        [349.23, 329.63, 293.66, 261.63].forEach((freq, i) => {
-                            createOsc('triangle', freq, now + i * 0.15, 0.3, 0.2, 0.05);
-                        });
+                        [349.23, 329.63, 293.66, 261.63].forEach((f, i) => createOsc('triangle', f, now + i * 0.15, 0.3, 0.2, 0.05));
                         break;
                     case 'ATTEMPT_UP':
                         const s3 = createOsc('sine', 400, now, 0.4, 0.15, 0.1);
                         s3.osc.frequency.exponentialRampToValueAtTime(600, now + 0.3);
                         break;
                     case 'WIN':
-                        [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
-                            createOsc('sine', freq, now + i * 0.08, 0.8, 0.15, 0.02);
-                            createOsc('triangle', freq/2, now + i * 0.08, 0.8, 0.05, 0.02);
+                        [523.25, 659.25, 783.99, 1046.50].forEach((f, i) => {
+                            createOsc('sine', f, now + i * 0.08, 0.8, 0.15, 0.02);
+                            createOsc('triangle', f/2, now + i * 0.08, 0.8, 0.05, 0.02);
                         });
                         break;
                     case 'PERFECT_WIN':
-                        [523.25, 659.25, 783.99, 1046.50, 1318.51, 1567.98].forEach((freq, i) => {
-                            createOsc('sine', freq, now + i * 0.08, 1.2, 0.15, 0.02);
-                            createOsc('triangle', freq/2, now + i * 0.08, 1.2, 0.05, 0.02);
+                        [523.25, 659.25, 783.99, 1046.50, 1318.51, 1567.98].forEach((f, i) => {
+                            createOsc('sine', f, now + i * 0.08, 1.2, 0.15, 0.02);
+                            createOsc('triangle', f/2, now + i * 0.08, 1.2, 0.05, 0.02);
                         });
                         break;
                 }
-            } catch(e) {
-                console.warn('Audio synthesis failed', e);
-            }
+            } catch(e) { console.warn('Audio synthesis failed', e); }
         };
 
         const BASE_IMG_PATH = './pics/'; 
@@ -252,11 +241,8 @@
         const makeEq = (leftArr, leftVal, rightArr, rightVal) => {
             let left = [...leftArr];
             let right = [...rightArr];
-            if (leftVal > rightVal) {
-                right.push('+', leftVal - rightVal);
-            } else if (leftVal < rightVal) {
-                left.push('+', rightVal - leftVal);
-            }
+            if (leftVal > rightVal) right.push('+', leftVal - rightVal);
+            else if (leftVal < rightVal) left.push('+', rightVal - leftVal);
             return [...left, '=', ...right];
         };
 
@@ -282,7 +268,6 @@
               equations.push(Math.random() > 0.5 ? [symA, '+', symB, '=', A + B] : [symB, '+', symA, '=', B + A]);
               equations.push(Math.random() > 0.5 ? [symB, '+', symC, '=', B + C] : [symC, '+', symB, '=', C + B]);
               break;
-
             case 2:
               [A, B, C, D] = getUniqueRandoms(4, 1, 9);
               answer = A + B + C + D;
@@ -292,7 +277,6 @@
               equations.push([symC, '+', symB, '=', C + B]);
               equations.push([symD, '+', symC, '=', D + C]);
               break;
-
             case 3:
               [A, B, C] = getUniqueRandoms(3, 1, 9);
               if (A < B) { let t = A; A = B; B = t; } 
@@ -302,7 +286,6 @@
               equations.push([symA, '-', symB, '=', A - B]);
               equations.push(makeEq([symC, '+', symC], C * 2, [symA], A));
               break;
-
             case 4:
               [A, B, C, D] = getUniqueRandoms(4, 1, 9);
               answer = A * B + C - D;
@@ -312,7 +295,6 @@
               equations.push([symC, '+', symB, '=', C + B]);
               equations.push(makeEq([symD, '×', 2], D * 2, [symB], B));
               break;
-
             case 5:
               [A, B, C, D] = getUniqueRandoms(4, 1, 9);
               answer = A + B * C - D;
@@ -321,12 +303,10 @@
               if (r5 < 0.33) equations.push([symA, '+', symA, '=', A + A]);
               else if (r5 < 0.66) equations.push([symA, '×', symA, '=', A * A]);
               else equations.push([symA, '+', symA, '+', symA, '=', A * 3]);
-              
               equations.push([symB, '+', symA, '=', B + A]);
               equations.push(makeEq([symA, '×', symB], A * B, [symC], C));
               equations.push(makeEq([symD, '+', symC], D + C, [symA], A));
               break;
-
             case 6:
               [A, B, C, D, E] = getUniqueRandoms(5, 1, 9);
               answer = A * B + C * D - E;
@@ -335,18 +315,14 @@
               if (r6 < 0.33) equations.push([symA, '+', symA, '=', A + A]);
               else if (r6 < 0.66) equations.push([symA, '×', symA, '=', A * A]);
               else equations.push([symA, '+', symA, '+', symA, '=', A * 3]);
-              
               equations.push(makeEq([symB, '×', 2], B * 2, [symA], A));
               equations.push(makeEq([symA, '×', 3], A * 3, [symC], C));
               equations.push(makeEq([symD, '+', symB], D + B, [symC, '×', 2], C * 2));
               equations.push(makeEq([symE, '+', symD], E + D, [symA, '×', symB], A * B));
               break;
-
             default:
               A=1;B=2;C=3;answer=6;targetArr=[symA,'+',symB,'+',symC,'=','?'];
               equations.push([symA,'+',symA,'=',2]);
-              equations.push([symA,'+',symB,'=',3]);
-              equations.push([symC,'+',symA,'=',4]);
           }
           if(answer <= 0) continue; 
           const trueValues={[symA]:A,[symB]:B,[symC]:C};
@@ -371,30 +347,50 @@
           }
         };
 
-        const CharIcon = ({charId,className}) => {
+        const CharIcon = ({charId, className, style}) => {
           const[imgError,setImgError]=useState(false);
           const char=CHARACTERS[charId];if(!char)return null;
-          if(imgError)return<span className={className}>{char.fallback}</span>;
-          return<img src={char.imageUrl} alt={char.id} className={`${className} object-contain pointer-events-none`} onError={()=>setImgError(true)}/>;
+          if(imgError)return<span className={className} style={style}>{char.fallback}</span>;
+          return<img src={char.imageUrl} alt={char.id} className={`${className} object-contain pointer-events-none`} style={style} onError={()=>setImgError(true)}/>;
         };
 
-        const EquationDisplay = ({parts,isTarget}) => (
-          <div className={`flex flex-wrap items-center justify-center gap-y-1 gap-x-1 md:gap-x-2 font-black w-full ${isTarget?'text-white m-0':'text-[#1F4E79] flex-grow'}`} dir="ltr">
-            {parts.map((part,i)=>{
-              if(typeof part==='string'&&CHARACTERS[part])return<CharIcon key={i} charId={part} className="h-[3.5vh] sm:h-[4vh] w-auto max-h-8 sm:max-h-10 filter drop-shadow-md"/>;
-              if(typeof part==='number'||part==='?')return<span key={i} className="equation-text">{part}</span>;
-              return<span key={i} className={`equation-text ${isTarget?'text-white':'text-[#43B047]'}`}>{part}</span>;
-            })}
-          </div>
-        );
+        const EquationDisplay = ({parts, isTarget, level, eqCount}) => {
+          // חישוב גודל בסיס: vh מחולק לפי מספר משוואות, עם clamp לבטיחות
+          // הטריק: fontSize נראה ~40% יותר גדול מ-height על תמונה, אז מקטינים את הטקסט בהתאם
+          let imgSize, txtSize;
+
+          if (isTarget) {
+            const base = level >= 5 ? 6 : 7;
+            imgSize = `clamp(1.8rem, ${base}vh, 4.5rem)`;
+            txtSize = `clamp(1.1rem, ${base * 0.6}vh, 2.8rem)`;
+          } else {
+            const base = Math.min(6.5, 28 / Math.max(eqCount, 2));
+            imgSize = `clamp(1.2rem, ${base}vh, 3rem)`;
+            txtSize = `clamp(0.8rem, ${base * 0.65}vh, 2rem)`;
+          }
+
+          return (
+            <div className={`flex flex-nowrap items-center justify-center gap-x-[clamp(1px,0.5vw,6px)] font-black w-full h-full max-w-full overflow-hidden ${isTarget?'text-white':'text-[#1F4E79]'}`} dir="ltr">
+              {parts.map((part,i)=>{
+                if(typeof part==='string'&&CHARACTERS[part]) {
+                    return <CharIcon key={i} charId={part} style={{height: imgSize, maxHeight: '88%'}} className="w-auto object-contain filter drop-shadow-md shrink min-w-0" />;
+                }
+                if(typeof part==='number'||part==='?') {
+                    return <span key={i} style={{fontSize: txtSize, lineHeight: 1}} className="shrink min-w-0 whitespace-nowrap">{part}</span>;
+                }
+                return <span key={i} style={{fontSize: txtSize, lineHeight: 1}} className={`shrink min-w-0 whitespace-nowrap ${isTarget?'text-white':'text-[#43B047]'}`}>{part}</span>;
+              })}
+            </div>
+          );
+        };
 
         const FoulIndicator = ({type,remaining,total,className}) => {
           const charId=type==='luigi'?'luigy':'mario';
           return(
-            <div className={`flex items-center gap-1 ${className}`}>
+            <div className={`flex items-center gap-0.5 sm:gap-1 ${className}`}>
               {Array.from({length:total}).map((_,i)=>(
-                <div key={i} className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-[#1F4E79] overflow-hidden bg-white flex items-center justify-center shadow-md ${i>=remaining?'foul-used':''}`}>
-                  <CharIcon charId={charId} className="h-[85%] w-[85%]"/>
+                <div key={i} className={`w-4 h-4 sm:w-6 sm:h-6 rounded-full border border-[#1F4E79] overflow-hidden bg-white flex items-center justify-center shadow-sm ${i>=remaining?'foul-used':''}`}>
+                  <CharIcon charId={charId} className="h-[80%] w-[80%]"/>
                 </div>
               ))}
             </div>
@@ -408,7 +404,7 @@
 
           return(
             <div className="modal-overlay" onClick={onAction}>
-              <div className="modal-box bg-white rounded-3xl border-4 border-[#1F4E79] shadow-2xl p-6 sm:p-8 max-w-sm w-[90%] text-center cursor-pointer" onClick={onAction}>
+              <div className="modal-box bg-white rounded-3xl border-4 border-[#1F4E79] shadow-2xl p-6 sm:p-8 max-w-sm w-[90%] text-center cursor-pointer" onClick={(e) => { e.stopPropagation(); onAction(); }}>
                 {isPerfect?(
                   <><div className="text-5xl mb-3">⭐⭐⭐</div>
                   <h2 className="text-2xl sm:text-3xl font-black text-[#43B047] mb-2">אליפות!</h2>
@@ -422,7 +418,7 @@
                   <h2 className="text-2xl sm:text-3xl font-black text-[#DE2B2B] mb-2">לא נורא...</h2>
                   <p className="text-lg sm:text-xl font-bold text-[#1F4E79]">המשחק נגמר, נסה שוב!</p></>
                 )}
-                <button onClick={onAction}
+                <button onClick={(e) => { e.stopPropagation(); onAction(); }}
                   className="mt-6 px-8 py-3 bg-[#005FCE] hover:bg-blue-600 text-white font-black text-lg sm:text-xl rounded-xl border-2 border-[#1F4E79] shadow-md active:scale-95 transition-transform w-full">
                   {buttonText}
                 </button>
@@ -445,10 +441,10 @@
                                     <div key={idx} className={`flex justify-between items-center p-2 rounded-lg border-2 border-[#1F4E79] ${idx === 0 ? 'bg-[#FBD000]' : 'bg-gray-50'}`}>
                                         <span className="font-bold w-6 text-right">#{idx+1}</span>
                                         <span className="font-bold flex items-center gap-1 w-16">
-                                            <img src="./pics/star.png" alt="star" className="w-4 h-4 object-contain drop-shadow-sm" />{entry.stars}
+                                            <img src="./pics/star.png" alt="star" className="w-4 h-4 object-contain" />{entry.stars}
                                         </span>
                                         <span className="font-bold flex items-center gap-1 w-16">
-                                            <img src="./pics/coin.png" alt="coin" className="w-4 h-4 object-contain drop-shadow-sm" />{entry.coins}
+                                            <img src="./pics/coin.png" alt="coin" className="w-4 h-4 object-contain" />{entry.coins}
                                         </span>
                                         <span className="text-sm text-gray-600 w-20 text-left">{entry.date}</span>
                                     </div>
@@ -463,83 +459,32 @@
 
         const EndGameScreen = ({ stars, coins, onRestart }) => {
             const [leaderboard, setLeaderboard] = useState([]);
-
             useEffect(() => {
                 playSynthSound('PERFECT_WIN'); 
                 launchConfetti();
-                
                 const lb = JSON.parse(localStorage.getItem('luigiLeaderboard') || '[]');
-                lb.push({ 
-                    stars: stars, 
-                    coins: coins, 
-                    date: new Date().toLocaleDateString('he-IL'),
-                    timestamp: Date.now()
-                });
-                
+                lb.push({ stars, coins, date: new Date().toLocaleDateString('he-IL'), timestamp: Date.now() });
                 lb.sort((a, b) => b.stars - a.stars || b.coins - a.coins || b.timestamp - a.timestamp);
                 const top5 = lb.slice(0, 5);
-                
                 localStorage.setItem('luigiLeaderboard', JSON.stringify(top5));
                 setLeaderboard(top5);
             }, [stars, coins]);
 
-            const handleClearLeaderboard = () => {
-                if(window.confirm('למחוק את טבלת התוצאות?')) {
-                    localStorage.removeItem('luigiLeaderboard');
-                    setLeaderboard([]);
-                }
-            };
-
             return (
                 <div className="h-full w-full bg-[#81B9E6] flex flex-col items-center justify-center p-2">
-                    <div className="w-full max-w-lg bg-white rounded-3xl border-[6px] border-[#1F4E79] shadow-2xl p-6 flex flex-col items-center text-center">
-                        <h1 className="text-4xl sm:text-5xl font-black text-[#43B047] mb-2 drop-shadow-md">סיום המשחק!</h1>
-                        
-                        <p className="text-[#1F4E79] font-bold text-xl mb-4">התוצאה הסופית שלך:</p>
-
-                        <div className="flex justify-center gap-8 mb-6 bg-[#B3D4F0] w-full p-4 rounded-2xl border-4 border-[#1F4E79]">
-                            <div className="flex flex-col items-center" id="end-star-icon">
-                                <img src="./pics/star.png" alt="star" className="w-12 h-12 sm:w-16 sm:h-16 mb-1 drop-shadow-md object-contain" />
-                                <span className="text-3xl font-black text-[#1F4E79]">{stars}</span>
-                            </div>
-                            <div className="flex flex-col items-center" id="end-coin-icon">
-                                <img src="./pics/coin.png" alt="coin" className="w-12 h-12 sm:w-16 sm:h-16 mb-1 drop-shadow-md object-contain" />
-                                <span className="text-3xl font-black text-[#1F4E79]">{coins}</span>
-                            </div>
+                    <div className="w-full max-w-lg bg-white rounded-3xl border-[6px] border-[#1F4E79] shadow-2xl p-6 text-center">
+                        <h1 className="text-4xl sm:text-5xl font-black text-[#43B047] mb-2">סיום המשחק!</h1>
+                        <div className="flex justify-center gap-8 mb-6 bg-[#B3D4F0] p-4 rounded-2xl border-4 border-[#1F4E79]">
+                            <div className="flex flex-col items-center"><img src="./pics/star.png" className="w-12 h-12 mb-1" />{stars}</div>
+                            <div className="flex flex-col items-center"><img src="./pics/coin.png" className="w-12 h-12 mb-1" />{coins}</div>
                         </div>
-
-                        <div className="w-full mt-2">
-                            <h3 className="text-2xl font-black text-[#DE2B2B] mb-3">המשחקים הטובים ביותר:</h3>
-                            <div className="flex flex-col gap-2 mb-6">
-                                {leaderboard.length === 0 ? (
-                                    <p className="text-gray-500 font-bold">אין עדיין תוצאות...</p>
-                                ) : leaderboard.map((entry, idx) => (
-                                    <div key={idx} className={`flex justify-between items-center p-2 rounded-lg border-2 border-[#1F4E79] ${idx === 0 ? 'bg-[#FBD000]' : 'bg-gray-50'}`}>
-                                        <span className="font-bold w-6 text-right">#{idx+1}</span>
-                                        <span className="font-bold flex items-center gap-1 w-16">
-                                            <img src="./pics/star.png" className="w-4 h-4 object-contain drop-shadow-sm" />{entry.stars}
-                                        </span>
-                                        <span className="font-bold flex items-center gap-1 w-16">
-                                            <img src="./pics/coin.png" className="w-4 h-4 object-contain drop-shadow-sm" />{entry.coins}
-                                        </span>
-                                        <span className="text-sm text-gray-600 w-20 text-left">{entry.date}</span>
-                                    </div>
-                                ))}
-                            </div>
-                            <button onClick={onRestart} className="px-8 py-3 bg-[#43B047] hover:bg-green-600 text-white font-black text-xl rounded-xl border-2 border-[#1F4E79] shadow-md w-full transition-transform active:scale-95">
-                                שחק שוב
-                            </button>
-                            {leaderboard.length > 0 && (
-                                <button onClick={handleClearLeaderboard} className="text-[#DE2B2B] hover:text-red-700 font-bold text-sm underline mt-4 transition-colors">
-                                    אפס טבלת תוצאות
-                                </button>
-                            )}
-                        </div>
+                        <button onClick={onRestart} className="px-8 py-3 bg-[#43B047] text-white font-black text-xl rounded-xl border-2 border-[#1F4E79] w-full">שחק שוב</button>
                     </div>
                 </div>
             );
         };
 
+        // === דראג אנד דרופ הוק ===
         const useDragAndDrop = (onDropOnTarget) => {
           const ref=useRef({isDragging:false,number:null,ghostEl:null,startX:0,startY:0,moved:false});
           const pos=(e)=>{
@@ -547,35 +492,56 @@
             if(e.changedTouches?.length>0)return{x:e.changedTouches[0].clientX,y:e.changedTouches[0].clientY};
             return{x:e.clientX,y:e.clientY};
           };
-          const ghost=(n,x,y)=>{const g=document.createElement('div');g.className='drag-ghost';g.textContent=n;g.style.left=x+'px';g.style.top=y+'px';document.body.appendChild(g);return g;};
-          const clean=()=>{const s=ref.current;if(s.ghostEl){s.ghostEl.remove();s.ghostEl=null;}document.querySelectorAll('.drop-target-active').forEach(e=>e.classList.remove('drop-target-active'));};
-          const findDT=(x,y)=>{for(const e of document.elementsFromPoint(x,y)){if(e.dataset.dropTarget)return e.dataset.dropTarget;}return null;};
-          const hlDT=(x,y)=>{document.querySelectorAll('.drop-target-active').forEach(e=>e.classList.remove('drop-target-active'));for(const e of document.elementsFromPoint(x,y)){if(e.dataset.dropTarget){e.classList.add('drop-target-active');break;}}};
+          const ghost=(n,x,y)=>{
+            const g=document.createElement('div');g.className='drag-ghost';g.textContent=n;
+            g.style.left=x+'px';g.style.top=y+'px';document.body.appendChild(g);return g;
+          };
+          const clean=()=>{
+            const s=ref.current;if(s.ghostEl){s.ghostEl.remove();s.ghostEl=null;}
+            document.querySelectorAll('.drop-target-active').forEach(e=>e.classList.remove('drop-target-active'));
+          };
+          const findDT=(x,y)=>{
+            for(const e of document.elementsFromPoint(x,y)){if(e.dataset.dropTarget)return e.dataset.dropTarget;}
+            return null;
+          };
+          const hlDT=(x,y)=>{
+            document.querySelectorAll('.drop-target-active').forEach(e=>e.classList.remove('drop-target-active'));
+            for(const e of document.elementsFromPoint(x,y)){if(e.dataset.dropTarget){e.classList.add('drop-target-active');break;}}
+          };
           const handleStart=useCallback((e,number)=>{
             if(e.type==='mousedown'&&e.button!==0)return;
             const p=pos(e);const s=ref.current;
             s.isDragging=true;s.number=number;s.startX=p.x;s.startY=p.y;s.moved=false;s.ghostEl=null;
-            e.preventDefault();
           },[]);
           useEffect(()=>{
-            const onMove=(e)=>{const s=ref.current;if(!s.isDragging)return;const p=pos(e);
+            const onMove=(e)=>{
+              const s=ref.current;if(!s.isDragging)return;const p=pos(e);
               if(!s.moved&&Math.abs(p.x-s.startX)+Math.abs(p.y-s.startY)>5){s.moved=true;s.ghostEl=ghost(s.number,p.x,p.y);}
-              if(s.moved&&s.ghostEl){s.ghostEl.style.left=p.x+'px';s.ghostEl.style.top=p.y+'px';hlDT(p.x,p.y);}e.preventDefault();
+              if(s.moved&&s.ghostEl){s.ghostEl.style.left=p.x+'px';s.ghostEl.style.top=p.y+'px';hlDT(p.x,p.y);}
+              if(e.cancelable) e.preventDefault();
             };
-            const onEnd=(e)=>{const s=ref.current;if(!s.isDragging)return;const p=pos(e);
-              if(s.moved){if(s.ghostEl)s.ghostEl.style.display='none';const t=findDT(p.x,p.y);if(s.ghostEl)s.ghostEl.style.display='';if(t&&onDropOnTarget)onDropOnTarget(t,s.number.toString());}
+            const onEnd=(e)=>{
+              const s=ref.current;if(!s.isDragging)return;const p=pos(e);
+              if(s.moved){
+                if(s.ghostEl)s.ghostEl.style.display='none';
+                const t=findDT(p.x,p.y);
+                if(s.ghostEl)s.ghostEl.style.display='';
+                if(t&&onDropOnTarget)onDropOnTarget(t,s.number.toString());
+              }
               clean();s.isDragging=false;s.number=null;s.moved=false;
             };
             document.addEventListener('mousemove',onMove,{passive:false});document.addEventListener('mouseup',onEnd);
             document.addEventListener('touchmove',onMove,{passive:false});document.addEventListener('touchend',onEnd);document.addEventListener('touchcancel',onEnd);
-            return()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onEnd);
-              document.removeEventListener('touchmove',onMove);document.removeEventListener('touchend',onEnd);document.removeEventListener('touchcancel',onEnd);};
+            return()=>{
+              document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onEnd);
+              document.removeEventListener('touchmove',onMove);document.removeEventListener('touchend',onEnd);document.removeEventListener('touchcancel',onEnd);
+            };
           },[onDropOnTarget]);
           return{handleStart};
         };
 
         function App(){
-          const [gameState, setGameState] = useState('playing'); // playing | finished
+          const [gameState, setGameState] = useState('playing');
           const [level, setLevel] = useState(1);
           const [puzzle, setPuzzle] = useState(null);
           const [userAnswer, setUserAnswer] = useState('');
@@ -586,252 +552,187 @@
           const [attempts, setAttempts] = useState(1);
           const [modal, setModal] = useState(null);
           const [showLeaderboard, setShowLeaderboard] = useState(false); 
-          
-          // ניקוד
           const [totalStars, setTotalStars] = useState(0);
           const [totalCoins, setTotalCoins] = useState(0);
           const [displayStars, setDisplayStars] = useState(0);
           const [displayCoins, setDisplayCoins] = useState(0);
 
           const puzzleRef=useRef(puzzle);puzzleRef.current=puzzle;
-          
           const prevAttempts = useRef(attempts);
+
           useEffect(() => {
-              if (attempts > prevAttempts.current && attempts > 1) {
-                  playSynthSound('ATTEMPT_UP');
-              }
+              if (attempts > prevAttempts.current && attempts > 1) playSynthSound('ATTEMPT_UP');
               prevAttempts.current = attempts;
           }, [attempts]);
 
-          const handleNewPuzzle=(selectedLevel=level)=>{
-            setLevel(selectedLevel);
-            setPuzzle(generatePuzzle(selectedLevel));
-            setUserAnswer('');
-            setSymbolValues({});
-            setDraftStatus({});
-            setLuigiFouls(3);
-            setMarioFouls(3);
-            setAttempts(1);
-            setModal(null);
+          const handleNewPuzzle=(sl=level, resetAttempts=true)=>{
+            setLevel(sl); setPuzzle(generatePuzzle(sl));
+            setUserAnswer(''); setSymbolValues({}); setDraftStatus({});
+            setLuigiFouls(3); setMarioFouls(3); setModal(null);
+            if (resetAttempts) {
+                setAttempts(1);
+            }
           };
 
-          const handleManualLevelClick = (selectedLevel) => {
-            setLevel(selectedLevel);
-            setPuzzle(generatePuzzle(selectedLevel));
-            setUserAnswer('');
-            setSymbolValues({});
-            setDraftStatus({});
-            setLuigiFouls(3);
-            setMarioFouls(3);
-            setAttempts(prev => prev + 1);
-            setModal(null);
+          const handleManualLevelClick=(sl)=>{
+            handleNewPuzzle(sl, false); 
+            setAttempts(prev => prev + 1); 
           };
 
           const resetRound=()=>{
-            setUserAnswer('');setSymbolValues({});setDraftStatus({});
-            setLuigiFouls(3);setMarioFouls(3);setAttempts(prev=>prev+1);setModal(null);
+            setUserAnswer(''); setSymbolValues({}); setDraftStatus({});
+            setLuigiFouls(3); setMarioFouls(3); setAttempts(prev=>prev+1); setModal(null);
           };
 
           const restartFullGame = () => {
               setTotalStars(0); setDisplayStars(0);
               setTotalCoins(0); setDisplayCoins(0);
-              setGameState('playing');
-              handleNewPuzzle(1);
+              setGameState('playing'); 
+              handleNewPuzzle(1, true);
           };
 
-          useEffect(()=>{handleNewPuzzle(1);},[]);
+          useEffect(()=>{ handleNewPuzzle(1); },[]);
 
           const handleSubmit=(e)=>{
-            if(e)e.preventDefault();
-            if((!userAnswer&&userAnswer!=='0')||modal)return;
-            
+            if(e) e.preventDefault();
+            if(!userAnswer||modal) return;
             if(parseInt(userAnswer,10)===puzzle.answer){
-              launchConfetti();
-              
-              const starsEarned = attempts === 1 ? 3 : 1;
-              if (attempts === 1) playSynthSound('PERFECT_WIN');
-              else playSynthSound('WIN');
-              
-              setTotalStars(prev => prev + starsEarned);
-              
-              animateItem('star', 'final-answer-box', 'star-score-icon', false, starsEarned, () => {
-                  setDisplayStars(prev => prev + 1);
-              });
-
-              if (level === 6) {
-                  setModal({type:'win'});
-              } else {
-                  setModal({type:'win'});
-              }
-
-            }else{
-              playSynthSound('MISTAKE');
-              setUserAnswer('');
-              
-              setTotalStars(prev => Math.max(0, prev - 1));
-              setDisplayStars(prev => Math.max(0, prev - 1));
+              const se = attempts === 1 ? 3 : 1;
+              if (attempts === 1) playSynthSound('PERFECT_WIN'); else playSynthSound('WIN');
+              setTotalStars(p=>p+se);
+              animateItem('star', 'final-answer-box', 'star-score-icon', false, se, () => setDisplayStars(p=>p+1));
+              setModal({type:'win'}); launchConfetti();
+            } else {
+              playSynthSound('MISTAKE'); setUserAnswer('');
+              setTotalStars(p=>Math.max(0, p-1)); setDisplayStars(p=>Math.max(0, p-1));
               animateItem('star', 'final-answer-box', 'star-score-icon', true, 1, ()=>{});
-
-              setLuigiFouls(prev=>{
-                const n=prev-1;
-                if(n<=0){ 
-                    setTimeout(()=>setModal({type:'loss'}),300); 
-                    playSynthSound('FAIL');
-                }
+              setLuigiFouls(p=>{
+                const n=p-1; if(n<=0){ setTimeout(()=>setModal({type:'loss'}),300); playSynthSound('FAIL'); }
                 return Math.max(0,n);
               });
             }
           };
 
-          const validateDraftInput=useCallback((charId,valStr)=>{
-            if(valStr===''){setSymbolValues(p=>({...p,[charId]:''}));setDraftStatus(p=>({...p,[charId]:null}));return;}
-            const p=puzzleRef.current;if(!p)return;
-            
-            if(parseInt(valStr,10)===p.trueValues[charId]){
-              playSynthSound('CORRECT'); 
-              setDraftStatus(pr=>({...pr,[charId]:'correct'}));
-              setSymbolValues(pr=>({...pr,[charId]:valStr}));
-              
-              setTotalCoins(prev => prev + 3);
-              animateItem('coin', `draft-cell-${charId}`, 'coin-score-icon', false, 3, () => {
-                  setDisplayCoins(prev => prev + 1);
-              });
-
-            }else{
-              playSynthSound('MISTAKE'); 
-              setDraftStatus(pr=>({...pr,[charId]:'error'}));
-              setSymbolValues(pr=>({...pr,[charId]:''}));
-              
-              setTotalCoins(prev => Math.max(0, prev - 1));
-              setDisplayCoins(prev => Math.max(0, prev - 1));
-              animateItem('coin', `draft-cell-${charId}`, 'coin-score-icon', true, 1, ()=>{});
-
-              setMarioFouls(prev=>{
-                const n=prev-1;
-                if(n<=0){
-                  setLuigiFouls(lp=>{
-                    const nl=lp-1;
-                    if(nl<=0){
-                      setTimeout(()=>setModal({type:'loss'}),300);
-                      playSynthSound('FAIL'); 
-                    }
+          const validateDraftInput=useCallback((id,val)=>{
+            if(val===''){setSymbolValues(p=>({...p,[id]:''})); return;}
+            const p=puzzleRef.current; if(!p) return;
+            if(parseInt(val,10)===p.trueValues[id]){
+              playSynthSound('CORRECT'); setDraftStatus(pr=>({...pr,[id]:'correct'})); setSymbolValues(pr=>({...pr,[id]:val}));
+              setTotalCoins(p=>p+3);
+              animateItem('coin', `draft-cell-${id}`, 'coin-score-icon', false, 3, () => setDisplayCoins(p=>p+1));
+            } else {
+              playSynthSound('MISTAKE'); setDraftStatus(pr=>({...pr,[id]:'error'})); setSymbolValues(pr=>({...pr,[id]:''}));
+              setTotalCoins(p=>Math.max(0, p-1)); setDisplayCoins(p=>Math.max(0, p-1));
+              animateItem('coin', `draft-cell-${id}`, 'coin-score-icon', true, 1, ()=>{});
+              setMarioFouls(p=>{
+                const n=p-1; if(n<=0){ setLuigiFouls(lp=>{
+                    const nl=lp-1; if(nl<=0){ setTimeout(()=>setModal({type:'loss'}),300); playSynthSound('FAIL'); }
                     return Math.max(0,nl);
-                  });
-                  return 3;
-                }
-                return n;
+                }); return 3; } return n;
               });
-              setTimeout(()=>{setDraftStatus(pr=>({...pr,[charId]:null}));},800);
+              setTimeout(()=>setDraftStatus(pr=>({...pr,[id]:null})),800);
             }
           }, []);
 
-          const handleDropOnTarget=useCallback((targetId,numberStr)=>{
-            if(targetId==='answer')setUserAnswer(prev=>prev+numberStr);else validateDraftInput(targetId,numberStr);
-          },[validateDraftInput]);
+          const{handleStart}=useDragAndDrop((t,n)=>{ if(t==='answer')setUserAnswer(p=>p+n); else validateDraftInput(t,n); });
 
-          const{handleStart}=useDragAndDrop(handleDropOnTarget);
-          const handleNumberTap=(num)=>{setUserAnswer(prev=>prev+num.toString());};
-          
-          const handleModalAction=()=>{
-              if(modal?.type==='win') {
-                  if (level === 6) {
-                      setGameState('finished');
-                  } else {
-                      handleNewPuzzle(level + 1); 
-                  }
+          const handleModalAction = () => {
+            if (!modal) return;
+            if (modal.type === 'win') {
+              if (level === 6) {
+                setGameState('finished');
               } else {
-                  resetRound();
+                handleNewPuzzle(level + 1, true);
               }
+            } else {
+              resetRound();
+            }
           };
 
-          if (gameState === 'finished') {
-              return <EndGameScreen stars={totalStars} coins={totalCoins} onRestart={restartFullGame} />;
-          }
+          const handleNumberTap = (num) => {
+            const activeEl = document.activeElement;
+            if (activeEl && activeEl.dataset.dropTarget && activeEl.dataset.dropTarget !== 'answer') {
+              validateDraftInput(activeEl.dataset.dropTarget, num.toString());
+            } else {
+              setUserAnswer(p => p + num.toString());
+            }
+          };
 
-          if(!puzzle)return<div className="flex h-full items-center justify-center text-3xl font-black text-[#1F4E79]">...טוען משחק</div>;
+          if (gameState === 'finished') return <EndGameScreen stars={totalStars} coins={totalCoins} onRestart={restartFullGame} />;
+          if(!puzzle) return <div className="flex h-full items-center justify-center text-3xl font-black">...טוען</div>;
+
+          // === חישוב משקלים ופרופורציות אחידות לכל המסכים ===
+          const symbolsCount = puzzle.symbols.length;
+          const eqCount = puzzle.equations.length;
+          
+          // משקלות יחסיים - לבן מקבל יותר, כתום וכחול פחות
+          let eqParts, draftParts, targetParts;
+          if (level <= 2) {
+            eqParts = 3.5; draftParts = 3; targetParts = 3.5;
+          } else if (level <= 4) {
+            eqParts = 4; draftParts = 2.5; targetParts = 3.5;
+          } else {
+            eqParts = 5; draftParts = 2; targetParts = 3;
+          }
+          
+          const eqWeight = eqParts;
+          const draftWeight = draftParts;
+          const targetWeight = targetParts;
+          
+          // גודל תאי הטיוטה - מחושב יחסית למספר הסמלים
+          const draftTextClass = "text-base sm:text-2xl w-7 h-7 sm:w-11 sm:h-11";
+
+          const answerBoxClass = "w-[30%] max-w-[7rem] h-[clamp(1.8rem,4vh,2.8rem)] text-[clamp(0.9rem,2.5vh,1.6rem)]";
 
           return(
             <div className="h-full w-full flex flex-col items-center justify-center p-1 sm:p-2">
-              <div className="w-full max-w-4xl h-full max-h-[98vh] bg-[#B3D4F0] rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden border-[4px] sm:border-[6px] border-[#1F4E79] shadow-2xl flex flex-col">
+              <div className="w-full max-w-4xl h-full max-h-none sm:max-h-[98vh] bg-[#B3D4F0] rounded-xl sm:rounded-[2rem] border-[4px] sm:border-[6px] border-[#1F4E79] shadow-2xl flex flex-col overflow-hidden">
                 
                 {/* 1. Header Section */}
-                <div className="bg-[#43B047] h-20 sm:h-28 text-white border-b-[4px] sm:border-b-[6px] border-[#1F4E79] flex-shrink-0 relative overflow-hidden flex items-center justify-center">
-                  <img 
-                    src="./pics/LUIGY CODE.png" 
-                    alt="קוד לואיג'י"
-                    className="h-[55%] sm:h-[65%] w-auto object-contain z-10 pr-[10%] sm:pr-[15%] drop-shadow-xl"
-                    onError={(e) => e.target.style.display = 'none'}
-                  />
-                  <div className="absolute right-0 top-0 bottom-0 h-full flex items-center z-20 pointer-events-none">
-                    <img 
-                      src="./pics/Luigy Logo - final.png" 
-                      alt="Luigy Logo"
-                      className="h-full w-auto object-contain block transform scale-110 origin-right"
-                      onError={(e) => e.target.style.display = 'none'}
-                    />
-                  </div>
+                <div className="bg-[#43B047] border-b-[4px] border-[#1F4E79] flex-shrink-0 flex items-center justify-center relative" style={{height: 'clamp(40px, 8vh, 72px)'}}>
+                  <img src="./pics/LUIGY CODE.png" className="h-[60%] sm:h-[65%] z-10 drop-shadow-xl" />
+                  <img src="./pics/Luigy Logo - final.png" className="absolute right-0 h-full scale-110 origin-right" />
                 </div>
-
-                <div className="flex-grow flex flex-col p-1.5 sm:p-3 gap-1.5 sm:gap-2 overflow-hidden">
+                
+                {/* --- אזור אמצעי נגלל --- */}
+                <div className="flex-grow flex flex-col p-1 sm:p-3 gap-1.5 sm:gap-3 overflow-y-auto overflow-x-hidden min-h-0 hide-scrollbar">
                   
                   {/* 2. Score Area */}
-                  <div className="bg-[#FFF9C4] rounded-xl sm:rounded-2xl py-1.5 px-4 sm:py-2 sm:px-6 border-2 sm:border-4 border-[#F28B00] shadow-sm flex justify-between items-center flex-shrink-0">
-                      
-                      <button onClick={() => setShowLeaderboard(true)} className="w-8 h-8 sm:w-12 sm:h-12 bg-transparent rounded-full border-2 sm:border-[3px] border-[#1F4E79] flex items-center justify-center hover:bg-[#F28B00]/20 active:scale-95 shadow-sm transition-colors text-lg sm:text-2xl" title="טבלת אלופים">
-                          🏆
-                      </button>
-
-                      <div className="flex justify-center items-center gap-6 sm:gap-16 flex-grow" dir="ltr">
-                          <div className="flex items-center gap-1 sm:gap-2" id="coin-score-icon">
-                              <span className="font-black text-[#1F4E79] text-2xl sm:text-4xl leading-none">{displayCoins}</span>
-                              <img src="./pics/coin.png" alt="coin" className="w-7 h-7 sm:w-10 sm:h-10 object-contain drop-shadow-sm" />
-                          </div>
-                          <div className="flex items-center gap-1 sm:gap-2" id="star-score-icon">
-                              <span className="font-black text-[#1F4E79] text-2xl sm:text-4xl leading-none">{displayStars}</span>
-                              <img src="./pics/star.png" alt="star" className="w-7 h-7 sm:w-10 sm:h-10 object-contain drop-shadow-sm" />
-                          </div>
+                  <div className="bg-[#FFF9C4] rounded-xl py-1 px-3 sm:py-2 sm:px-6 border-2 sm:border-4 border-[#F28B00] shadow-sm flex justify-between items-center flex-shrink-0">
+                      <button onClick={() => setShowLeaderboard(true)} className="w-8 h-8 sm:w-12 sm:h-12 bg-transparent rounded-full border-2 sm:border-[3px] border-[#1F4E79] flex items-center justify-center hover:bg-[#F28B00]/20 active:scale-95 shadow-sm transition-colors text-lg sm:text-2xl" title="טבלת אלופים">🏆</button>
+                      <div className="flex justify-center items-center gap-4 sm:gap-16 flex-grow" dir="ltr">
+                          <div className="flex items-center gap-1" id="coin-score-icon"><span className="font-black text-[#1F4E79] text-xl sm:text-4xl leading-none">{displayCoins}</span><img src="./pics/coin.png" className="w-6 h-6 sm:w-10 sm:h-10 object-contain drop-shadow-sm" /></div>
+                          <div className="flex items-center gap-1" id="star-score-icon"><span className="font-black text-[#1F4E79] text-xl sm:text-4xl leading-none">{displayStars}</span><img src="./pics/star.png" className="w-6 h-6 sm:w-10 sm:h-10 object-contain drop-shadow-sm" /></div>
                       </div>
-
                       <div className="w-8 sm:w-12"></div>
                   </div>
 
                   {/* 3. Levels Area */}
-                  <div className="bg-[#81B9E6] rounded-xl sm:rounded-2xl py-1.5 px-4 border-2 sm:border-4 border-[#1F4E79] shadow-sm flex justify-between items-center flex-shrink-0">
-                      
-                      <div className="flex items-center gap-2 sm:gap-3">
-                          <div className="w-8 h-8 sm:w-12 sm:h-12 bg-transparent rounded-full border-2 sm:border-[3px] border-[#DE2B2B] text-[#DE2B2B] flex items-center justify-center font-black text-lg sm:text-2xl shadow-sm cursor-default" title="מספר ניסיונות">
-                              {attempts}
-                          </div>
-                          <button onClick={restartFullGame} className="w-8 h-8 sm:w-12 sm:h-12 bg-transparent rounded-full border-2 sm:border-[3px] border-[#1F4E79] text-[#1F4E79] flex items-center justify-center hover:bg-[#1F4E79] hover:text-white active:scale-95 shadow-sm transition-colors" title="משחק חדש משלב 1">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                              </svg>
-                          </button>
+                  <div className="bg-[#81B9E6] rounded-xl py-1 px-2 sm:py-1.5 sm:px-4 border-2 sm:border-4 border-[#1F4E79] shadow-sm flex justify-between items-center flex-shrink-0">
+                      <div className="flex items-center gap-1.5 sm:gap-3">
+                          <div className="flex items-center justify-center bg-transparent rounded-full border-2 sm:border-[3px] border-[#DE2B2B] text-[#DE2B2B] font-black shadow-sm cursor-default" style={{width: 'clamp(1.6rem, 5vmin, 3rem)', height: 'clamp(1.6rem, 5vmin, 3rem)', fontSize: 'clamp(0.7rem, 2.5vmin, 1.5rem)'}} title="מספר ניסיונות">{attempts}</div>
+                          <button onClick={restartFullGame} className="flex items-center justify-center bg-transparent rounded-full border-2 sm:border-[3px] border-[#1F4E79] text-[#1F4E79] hover:bg-[#1F4E79] hover:text-white active:scale-95 shadow-sm transition-colors" style={{width: 'clamp(1.6rem, 5vmin, 3rem)', height: 'clamp(1.6rem, 5vmin, 3rem)', fontSize: 'clamp(0.7rem, 2.5vmin, 1.5rem)'}} title="משחק חדש משלב 1">↻</button>
                       </div>
-                      
-                      <div className="flex items-center gap-1.5 sm:gap-3" dir="ltr">
+                      <div className="flex items-center gap-1 sm:gap-3" dir="ltr">
                           {[1, 2, 3, 4, 5, 6].map(l => (
-                              <button key={l} onClick={() => handleManualLevelClick(l)}
-                                className={`w-8 h-8 sm:w-12 sm:h-12 rounded-lg font-black text-sm sm:text-2xl flex items-center justify-center transition-transform hover:scale-110 shadow-md flex-shrink-0 ${level === l ? 'bg-[#FBD000] text-[#43B047] border-2 sm:border-4 border-white' : 'bg-[#005FCE] text-white border-2 border-[#1F4E79]'}`}>
-                                {l}
-                              </button>
+                              <button key={l} onClick={() => handleManualLevelClick(l)} className={`rounded-md sm:rounded-lg font-black flex items-center justify-center transition-transform hover:scale-110 shadow-sm sm:shadow-md flex-shrink-0 ${level === l ? 'bg-[#FBD000] text-[#43B047] border-2 sm:border-4 border-white' : 'bg-[#005FCE] text-white border-2 border-[#1F4E79]'}`} style={{width: 'clamp(1.6rem, 5vmin, 3rem)', height: 'clamp(1.6rem, 5vmin, 3rem)', fontSize: 'clamp(0.6rem, 2.5vmin, 1.5rem)'}}>{l}</button>
                           ))}
                       </div>
                   </div>
                   
-                  {/* Equations Area */}
-                  <div className="bg-white rounded-xl sm:rounded-2xl py-1 px-1.5 sm:py-1.5 sm:px-3 border-2 sm:border-4 border-[#1F4E79] shadow-md flex flex-col flex-shrink-0">
+                  {/* Equations Area - מחולק דינאמית */}
+                  <div style={{flex: `${eqWeight} 1 0%`}} className="bg-white rounded-xl p-1 sm:p-2 border-2 sm:border-4 border-[#1F4E79] shadow-md flex flex-col justify-evenly min-h-0 overflow-hidden">
                     {puzzle.equations.map((eqArr,i)=>(
-                      <div key={i} className="flex justify-center items-center py-0.5">
-                        <EquationDisplay parts={eqArr} isTarget={false}/>
+                      <div key={i} className="flex justify-center items-center min-h-0 w-full" style={{flex: '1 1 0%'}}>
+                        <EquationDisplay parts={eqArr} isTarget={false} level={level} eqCount={eqCount}/>
                       </div>
                     ))}
                   </div>
 
-                  {/* Draft Area (Mario) */}
-                  <div className="bg-[#F28B00] rounded-xl sm:rounded-2xl pt-12 pb-4 px-3 sm:pt-16 sm:pb-6 sm:px-6 border-2 sm:border-4 border-[#1F4E79] shadow-md flex flex-col items-center justify-start flex-shrink-0 relative">
-                    <FoulIndicator type="mario" remaining={marioFouls} total={3} className="absolute top-2.5 left-2.5" />
-                    <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mt-1" dir="ltr">
+                  {/* Draft Area (Mario) - מחולק דינאמית */}
+                  <div style={{flex: `${draftWeight} 1 0%`}} className="bg-[#F28B00] rounded-xl pt-5 pb-1 px-2 sm:pt-7 sm:pb-2 sm:px-6 border-2 sm:border-4 border-[#1F4E79] shadow-md flex items-center justify-center relative min-h-0 overflow-hidden">
+                    <FoulIndicator type="mario" remaining={marioFouls} total={3} className="absolute top-1 left-1.5 sm:top-1.5 sm:left-2 z-10" />
+                    <div className="flex items-center justify-center w-full h-full" style={{gap: 'clamp(0.25rem, 1.5vmin, 1rem)'}} dir="ltr">
                       {puzzle.symbols.map((charId,idx)=>{
                         const status=draftStatus[charId];
                         let boxCls="bg-white border-[#1F4E79]";
@@ -839,13 +740,17 @@
                         if(status==='error')boxCls="bg-[#FFD1D1] border-[#1F4E79] shake-animation";
                         return(
                           <div key={idx} id={`draft-cell-${charId}`} data-drop-target={charId}
-                            className={`relative rounded-lg sm:rounded-xl border-2 sm:border-4 shadow-md transition-colors duration-300 ${boxCls} flex-shrink-0`}
-                            style={{width:'clamp(2.8rem, 6.5vw, 4.2rem)',height:'clamp(2.8rem, 6.5vw, 4.2rem)'}}>
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden rounded-lg">
-                              <CharIcon charId={charId} className="h-[80%] w-[80%] object-contain"/>
+                            className={`relative rounded-md sm:rounded-xl border-2 sm:border-4 shadow-sm sm:shadow-md transition-colors duration-300 ${boxCls} shrink`}
+                            style={{
+                              width: `min(${85/symbolsCount}%, calc(100% - 1rem))`,
+                              maxHeight: '92%',
+                              aspectRatio: '1 / 1'
+                            }}>
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden rounded-md sm:rounded-lg">
+                              <CharIcon charId={charId} className="h-full w-full object-contain"/>
                             </div>
                             {symbolValues[charId]&&(
-                              <div className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 bg-white border-2 border-[#1F4E79] text-[#1F4E79] font-black text-sm sm:text-xl w-6 h-6 sm:w-9 sm:h-9 flex items-center justify-center rounded-md sm:rounded-lg shadow-lg z-30 pointer-events-none">
+                              <div className={`absolute top-0 left-0 -translate-x-1/3 -translate-y-1/3 bg-white border-2 border-[#1F4E79] text-[#1F4E79] font-black ${draftTextClass} flex items-center justify-center rounded sm:rounded-lg shadow-md sm:shadow-lg z-30 pointer-events-none`}>
                                 {symbolValues[charId]}
                               </div>
                             )}
@@ -861,55 +766,91 @@
                   </div>
 
                   {/* Final Question Area (Luigi) */}
-                  <div className="bg-[#005FCE] pt-10 pb-4 px-2 sm:pt-14 sm:pb-6 sm:px-4 rounded-xl sm:rounded-2xl border-2 sm:border-4 border-[#1F4E79] shadow-md flex flex-col items-center justify-start flex-grow relative min-h-0">
-                    <FoulIndicator type="luigi" remaining={luigiFouls} total={3} className="absolute top-2.5 left-2.5" />
+                  <div style={{flex: `${targetWeight} 1 0%`}} className="bg-[#005FCE] pt-4 pb-2 px-1 sm:pt-5 sm:pb-3 sm:px-3 rounded-xl border-2 sm:border-4 border-[#1F4E79] shadow-md flex flex-col items-center relative min-h-0 overflow-hidden">
+                    <FoulIndicator type="luigi" remaining={luigiFouls} total={3} className="absolute top-0.5 left-1.5 sm:top-1 sm:left-2 z-10" />
                     
-                    <div className="w-full flex flex-col items-center justify-start mt-1 sm:mt-2">
-                      <EquationDisplay parts={puzzle.target.slice(0,-2)} isTarget={true}/>
-                      <div className="flex items-center justify-center gap-2 sm:gap-3 mt-1 sm:mt-2" dir="ltr">
+                    <div className="w-full flex flex-col items-center flex-1 min-h-0">
+                      <div className="flex-1 min-h-0 flex items-center justify-center w-full">
+                        <EquationDisplay parts={puzzle.target.slice(0,-2)} isTarget={true} level={level} eqCount={1}/>
+                      </div>
+                      <div className="flex-shrink-0 flex items-center justify-center w-full py-1" dir="ltr">
                         <input type="number" id="final-answer-box" data-drop-target="answer"
                           value={userAnswer} onChange={(e)=>setUserAnswer(e.target.value)}
-                          className="w-16 h-8 sm:w-24 sm:h-12 text-center text-lg sm:text-2xl font-black rounded-xl border-3 border-[#1F4E79] bg-white text-[#1F4E79] focus:outline-none focus:ring-2 focus:ring-white shadow-sm"
+                          className={`${answerBoxClass} text-center font-black rounded-lg sm:rounded-xl border-2 sm:border-3 border-[#1F4E79] bg-white text-[#1F4E79] focus:outline-none focus:ring-4 focus:ring-[#FBD000] shadow-sm`}
                           dir="ltr" autoComplete="off"/>
                       </div>
                     </div>
                   </div>
 
-                </div>
+                </div> {/* סוף אזור אמצעי נגלל */}
 
                 {/* Keyboard Area */}
-                <div className="bg-[#DE2B2B] p-2 sm:p-3 border-t-[4px] sm:border-t-[6px] border-[#1F4E79] flex justify-center items-center flex-shrink-0">
-                  <div className="flex items-center gap-2 sm:gap-3" dir="ltr">
-                    <button type="button" onClick={()=>setUserAnswer('')}
-                      className="w-11 h-11 sm:w-14 sm:h-14 bg-[#FFa000] hover:bg-orange-400 text-white rounded-lg sm:rounded-xl border-2 border-[#1F4E79] shadow-md active:scale-95 transition-transform flex items-center justify-center cursor-pointer flex-shrink-0">
-                      <span className="text-base sm:text-2xl">⌫</span>
-                    </button>
-                    <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5 sm:gap-2">
+                <div className="bg-[#DE2B2B] py-1.5 px-1.5 sm:py-2 sm:px-3 border-t-[4px] sm:border-t-[6px] border-[#1F4E79] flex justify-center items-center flex-shrink-0">
+                  {/* מסך צר: 2 שורות. מסך רחב: שורה אחת */}
+                  <div className="w-full max-w-4xl" dir="ltr">
+                    {/* שורה אחת למסכים רחבים (sm+) */}
+                    <div className="hidden sm:flex items-center gap-1.5 justify-center">
+                      <button type="button" onClick={()=>setUserAnswer('')}
+                        className="w-12 h-12 flex items-center justify-center bg-[#FFa000] hover:bg-orange-400 text-white rounded-xl border-2 border-[#1F4E79] shadow-md active:scale-95 transition-transform cursor-pointer">
+                        <span className="text-xl">⌫</span>
+                      </button>
                       {[1,2,3,4,5,6,7,8,9,0].map(num=>(
                         <div key={num}
                           onMouseDown={(e)=>handleStart(e,num)}
                           onTouchStart={(e)=>handleStart(e,num)}
                           onClick={()=>handleNumberTap(num)}
-                          className="draggable-number w-11 h-11 sm:w-14 sm:h-14 bg-[#FBD000] rounded-lg sm:rounded-xl border-2 border-[#1F4E79] flex items-center justify-center text-base sm:text-2xl font-black text-[#1F4E79] shadow-md hover:bg-yellow-300 active:bg-yellow-400 transition-colors">
+                          className="draggable-number w-12 h-12 bg-[#FBD000] rounded-xl border-2 border-[#1F4E79] flex items-center justify-center text-xl font-black text-[#1F4E79] shadow-md hover:bg-yellow-300 active:bg-yellow-400 transition-colors">
                           {num}
                         </div>
                       ))}
+                      <button type="button" onClick={handleSubmit}
+                        className="w-12 h-12 flex items-center justify-center bg-[#43B047] hover:bg-green-500 text-white rounded-xl border-2 border-[#1F4E79] shadow-md active:scale-95 transition-transform">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+                        </svg>
+                      </button>
                     </div>
-                    <button type="button" onClick={handleSubmit}
-                      className="w-11 h-11 sm:w-14 sm:h-14 bg-[#43B047] hover:bg-green-500 text-white rounded-lg sm:rounded-xl border-2 border-[#1F4E79] shadow-md active:scale-95 transition-transform flex items-center justify-center flex-shrink-0">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-7 sm:w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
-                      </svg>
-                    </button>
+                    {/* שתי שורות למסכים צרים (mobile) */}
+                    <div className="flex sm:hidden flex-col gap-1 items-center">
+                      <div className="flex items-center gap-1 justify-center w-full">
+                        <button type="button" onClick={()=>setUserAnswer('')}
+                          className="flex-1 max-w-[3rem] aspect-square flex items-center justify-center bg-[#FFa000] text-white rounded-lg border-2 border-[#1F4E79] shadow-md active:scale-95 transition-transform cursor-pointer">
+                          <span className="text-base">⌫</span>
+                        </button>
+                        {[1,2,3,4,5].map(num=>(
+                          <div key={num}
+                            onMouseDown={(e)=>handleStart(e,num)}
+                            onTouchStart={(e)=>handleStart(e,num)}
+                            onClick={()=>handleNumberTap(num)}
+                            className="draggable-number flex-1 max-w-[3rem] aspect-square bg-[#FBD000] rounded-lg border-2 border-[#1F4E79] flex items-center justify-center text-lg font-black text-[#1F4E79] shadow-md active:bg-yellow-400 transition-colors">
+                            {num}
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-1 justify-center w-full">
+                        {[6,7,8,9,0].map(num=>(
+                          <div key={num}
+                            onMouseDown={(e)=>handleStart(e,num)}
+                            onTouchStart={(e)=>handleStart(e,num)}
+                            onClick={()=>handleNumberTap(num)}
+                            className="draggable-number flex-1 max-w-[3rem] aspect-square bg-[#FBD000] rounded-lg border-2 border-[#1F4E79] flex items-center justify-center text-lg font-black text-[#1F4E79] shadow-md active:bg-yellow-400 transition-colors">
+                            {num}
+                          </div>
+                        ))}
+                        <button type="button" onClick={handleSubmit}
+                          className="flex-1 max-w-[3rem] aspect-square flex items-center justify-center bg-[#43B047] text-white rounded-lg border-2 border-[#1F4E79] shadow-md active:scale-95 transition-transform">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
               </div>
 
-              {/* Leaderboard Modal (Podium) */}
               {showLeaderboard && <LeaderboardModal onClose={() => setShowLeaderboard(false)} />}
-              
-              {/* Result Modal */}
               {modal&&<ResultModal type={modal.type} attempts={attempts} onAction={handleModalAction} isLevel6={level === 6}/>}
             </div>
           );
@@ -920,12 +861,19 @@
     </script>
     
     <script>
-        if ('serviceWorker' in navigator) {
+        // בדיקה אם הדפדפן תומך ב-ServiceWorker ואם אנחנו לא בסביבת Blob מוגבלת
+        if ('serviceWorker' in navigator && window.location.protocol !== 'blob:') {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').then(registration => {
-                    console.log('ServiceWorker registration successful');
+                navigator.serviceWorker.getRegistrations().then(regs => {
+                    for(let reg of regs) { 
+                        if (window.location.search.includes('reset')) reg.unregister(); 
+                    }
+                }).catch(err => console.log('SW getRegistrations failed: ', err));
+
+                navigator.serviceWorker.register('sw.js').then(registration => {
+                    console.log('SW registered');
                 }).catch(err => {
-                    console.log('ServiceWorker registration failed: ', err);
+                    console.log('SW registration skipped or failed');
                 });
             });
         }
